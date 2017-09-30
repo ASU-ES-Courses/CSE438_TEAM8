@@ -5,10 +5,10 @@
 //#include<cdev.h>
 //#include<asm/uaccess.h>
 
-
+#define DEVICE_NAME "dataqueue1"
 MODULE_LICENSE("GPL");
 
-//static dev_t dev_num;
+static dev_t dev_num;
 
 int squeue_open(struct inode *qinode, struct file *qfile){
 	printk(KERN_ALERT"Opening.....through %s function\n", __FUNCTION__);
@@ -43,12 +43,12 @@ int __init squeue_module_init(void)
 {
 	printk(KERN_ALERT"Working on %s function\n", __FUNCTION__);
 
-	register_chrdev(121,"dataqueue1",&squeue_fops);
+//	register_chrdev(121,"dataqueue1",&squeue_fops);
 
-//	if (alloc_chrdev_region(&dev_num, 0, 1, dataqueue1)<0){
-//		printk(KERN_ALERT "Device not registered\n");
-//		return -1;
-//	}
+	if (alloc_chrdev_region(&dev_num, 0, 1, DEVICE_NAME)<0){
+		printk(KERN_ALERT "Device not registered\n");
+		return -1;
+	}
 
 	return 0;
 }
