@@ -17,7 +17,7 @@
 #define max_number 50
 #define minimum_number 10
 #define Base_period 1000
-#define EVENT_FILE_NAME "/dev/input/event17"
+#define EVENT_FILE_NAME "/dev/input/event2"
 
 //Global variables
 
@@ -405,7 +405,7 @@ void* onPeriodicActive(void * id){
 			if( q_status == -1){
 				printf("Message dropped in Queue1\n");
 			}
-			sleep(1);
+			//sleep(1);
 			pthread_mutex_unlock(&lock[0]);				//Unlocking MUTEX LOCK for Q1
 		}
 
@@ -419,7 +419,7 @@ void* onPeriodicActive(void * id){
 			if( q_status == -1){
 				printf("Message dropped in Queue2\n");
 			}	
-			sleep(1);		
+			//sleep(1);		
 			pthread_mutex_unlock(&lock[1]);				//Unlocking MUTEX LOCK for Q2
 		}
 
@@ -457,7 +457,7 @@ void* onAperiodicActive2(void * id){
 		if( q_status == -1){
 			printf("Message dropped from Queue2\n");
 		}
-		sleep(1);
+		//sleep(1);
 		pthread_mutex_unlock(&lock[1]);				//Unlocking MUTEX LOCK for Q2
 	}
 	return 0;	
@@ -483,7 +483,7 @@ void* onAperiodicActive1(void * id){
 		if( q_status == -1){
 			printf("Message dropped from Queue1\n");
 		}
-		sleep(1);
+		//sleep(1);
 		pthread_mutex_unlock(&lock[0]);				//Unlocking MUTEX LOCK for Q1
 	}					
 	return 0;
