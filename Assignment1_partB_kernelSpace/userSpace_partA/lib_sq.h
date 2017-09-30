@@ -3,12 +3,16 @@
 #include<string.h>
 #include<time.h>
 #include<pthread.h>
-#include"rdtsc.h"
+//#include"rdtsc.h"
 
 //Macro definition
 #define MAX_MSGS 10
 #define MAX_MSG_LENGTH 512
 int message_id = -1;
+
+static __inline__ unsigned long long rdtsc(void);
+unsigned long long rdtsc();
+
 //Structure definition
 struct message{
 	long double buff; 				//to store value of pi
@@ -150,4 +154,21 @@ int sq_delete(struct mq *q){
 	free(q);	
 	
 	return 1;
+}
+
+
+unsigned long long rdtsc(){
+
+	#if defined(__x86_64__)
+
+
+	//static __inline__ 
+	unsigned long long rdtsc(void)
+	{
+	  unsigned hi, lo;
+	  __asm__ __volatile__ ("rdtsc" : "=a"(lo), "=d"(hi));
+	  return ( (unsigned long long)lo)|( ((unsigned long long)hi)<<32 );
+	}
+
+	#endif
 }
