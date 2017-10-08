@@ -27,6 +27,9 @@ int gpio_export(unsigned int gpio)
 	}
  
 	len = snprintf(buf, sizeof(buf), "%d", gpio);
+	if(len<0){
+		printf("snprintf error\n");
+	}
 	write(fd, buf, len);
 	close(fd);
  
@@ -48,6 +51,9 @@ int gpio_unexport(unsigned int gpio)
 	}
  
 	len = snprintf(buf, sizeof(buf), "%d", gpio);
+	if(len<0){
+		printf("snprintf error\n");
+	}
 	write(fd, buf, len);
 	close(fd);
 	return 0;
@@ -62,6 +68,9 @@ int gpio_set_dir(unsigned int gpio, unsigned int out_flag)
 	char buf[MAX_BUF];
  
 	len = snprintf(buf, sizeof(buf), SYSFS_GPIO_DIR  "/gpio%d/direction", gpio);
+	if(len<0){
+		printf("snprintf error\n");
+	}
  
 	fd = open(buf, O_WRONLY);
 	if (fd < 0) {
@@ -87,6 +96,9 @@ int gpio_set_value(unsigned int gpio, unsigned int value)
 	char buf[MAX_BUF];
  
 	len = snprintf(buf, sizeof(buf), SYSFS_GPIO_DIR "/gpio%d/value", gpio);
+	if(len<0){
+		printf("snprintf error\n");
+	}
  
 	fd = open(buf, O_WRONLY);
 	if (fd < 0) {
@@ -113,6 +125,9 @@ int gpio_get_value(unsigned int gpio, unsigned int *value)
 	char ch;
 
 	len = snprintf(buf, sizeof(buf), SYSFS_GPIO_DIR "/gpio%d/value", gpio);
+	if(len<0){
+		printf("snprintf error\n");
+	}
  
 	fd = open(buf, O_RDONLY);
 	if (fd < 0) {
@@ -143,6 +158,9 @@ int gpio_set_edge(unsigned int gpio, char *edge)
 	char buf[MAX_BUF];
 
 	len = snprintf(buf, sizeof(buf), SYSFS_GPIO_DIR "/gpio%d/edge", gpio);
+	if(len<0){
+		printf("snprintf error\n");
+	}
  
 	fd = open(buf, O_WRONLY);
 	if (fd < 0) {
@@ -165,6 +183,9 @@ int gpio_fd_open(unsigned int gpio)
 	char buf[MAX_BUF];
 
 	len = snprintf(buf, sizeof(buf), SYSFS_GPIO_DIR "/gpio%d/value", gpio);
+	if(len<0){
+		printf("snprintf error\n");
+	}
  
 	fd = open(buf, O_RDONLY | O_WRONLY| O_NONBLOCK );
 	if (fd < 0) {
@@ -183,6 +204,9 @@ int gpio_fd_open_read(unsigned int gpio)
 	char buf[MAX_BUF];
 
 	len = snprintf(buf, sizeof(buf), SYSFS_GPIO_DIR "/gpio%d/value", gpio);
+	if(len<0){
+		printf("snprintf error\n");
+	}
  
 	fd = open(buf, O_RDONLY | O_NONBLOCK );
 	if (fd < 0) {
@@ -200,6 +224,9 @@ int gpio_fd_open_edge(unsigned int gpio)
 	char buf[MAX_BUF];
 
 	len = snprintf(buf, sizeof(buf), SYSFS_GPIO_DIR "/gpio%d/edge", gpio);
+	if(len<0){
+		printf("snprintf error\n");
+	}
  
 	fd = open(buf, O_RDONLY | O_WRONLY | O_NONBLOCK );
 	if (fd < 0) {

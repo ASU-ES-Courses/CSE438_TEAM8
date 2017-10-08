@@ -255,7 +255,8 @@ int main(){
 	
 	int pwm_on = 0, pwm_off = 0, status = 0,i,j;
 	int arr[4] = {0,0,0,0}; //[PWM,R,G,B]
-	int LedR, LedG, LedB;
+	int LedR, LedG, LedB, len;
+	char buf[64];
 	// Array index represents IO port no.
 	// -1 indicates corresponding pin to that IO port no. is not available.
 	int GPIO_PIN[] = {11,12,13,14,6,0,1,38,40,4,10,5,15,7};
@@ -287,8 +288,22 @@ int main(){
 
 		IOSetup();
 
-		LedR = open("/sys/class/gpio/gpio4/value", O_WRONLY);
+		len = snprintf(buf, sizeof(buf), "/sys/class/gpio/gpio%d/value", R_GPIO);
+		if(len<0){
+			printf("snprintf error\n");
+		}	 
+		LedR = open(buf, O_WRONLY);
+
+		len = snprintf(buf, sizeof(buf), "/sys/class/gpio/gpio%d/value", G_GPIO);
+		if(len<0){
+			printf("snprintf error\n");
+		}		
 		LedG = open("/sys/class/gpio/gpio10/value", O_WRONLY);
+
+		len = snprintf(buf, sizeof(buf), "/sys/class/gpio/gpio%d/value", B_GPIO);
+		if(len<0){
+			printf("snprintf error\n");
+		}
 		LedB = open("/sys/class/gpio/gpio7/value", O_WRONLY);
 
 		while(1){
