@@ -7,7 +7,7 @@
 #include <pthread.h>
 #include <poll.h>
 #include<linux/input.h>
-#include <ctype.h>
+
 #include"Gpio_func.h"
 #include"Gpio_func.c"
 
@@ -222,38 +222,38 @@ void IOClose(void)
 
 	//Red Led
 	if(0> write(FdUnExport,&R_GPIO,3))
-		printf("error FdUnExport %d \n", R_GPIO);
+		printf("R_GPIO Pin UnExport error %d \n", R_GPIO);
 	if(R_LS != -1){
 		if(0> write(FdUnExport,&R_LS,2))
-			printf("error FdUnExport %d\n", R_LS);
+			printf("R_LS Pin UnExport error %d\n", R_LS);
 	}
 	if(R_MUX != -1){
 		if(0> write(FdUnExport,&R_MUX,2))
-			printf("error FdUnExport %d\n", R_MUX);
+			printf("R_MUX Pin UnExport error %d\n", R_MUX);
 	}
 
 	//Green Led
 	if(0> write(FdUnExport,&G_GPIO,3))
-		printf("error FdUnExport %d\n", G_GPIO);
+		printf("G_GPIO Pin UnExport error %d\n", G_GPIO);
 	if(G_LS != -1){
 		if(0> write(FdUnExport,&G_LS,2))
-			printf("error FdUnExport %d\n", G_LS);
+			printf("G_LS Pin UnExport error %d\n", G_LS);
 	}
 	if(G_MUX != -1){
 		if(0> write(FdUnExport,&G_MUX,2))
-			printf("error FdUnExport %d\n", G_MUX);
+			printf("G_MUX Pin UnExport error %d\n", G_MUX);
 	}
 
 	//Blue Led
 	if(0> write(FdUnExport,&B_GPIO,3))
-		printf("error FdUnExport %d\n", B_GPIO);
+		printf("B_GPIO Pin UnExport error %d\n", B_GPIO);
 	if(B_LS != -1){
 		if(0> write(FdUnExport,&B_LS,2))
-			printf("error FdUnExport %d\n", B_LS);
+			printf("B_LS Pin UnExport error %d\n", B_LS);
 	}
 	if(B_MUX != -1){
 		if(0> write(FdUnExport,&B_MUX,2))
-			printf("error FdUnExport %d\n", B_MUX);
+			printf("B_MUX Pin UnExport error %d\n", B_MUX);
 	}
 
 	close(FdUnExport);
@@ -262,7 +262,7 @@ void IOClose(void)
 int main(){
 	
 	int pwm_on = 0, pwm_off = 0,i,j,k=0,thread_status;
-	int arr[4] = {0,0,0,0}; //[PWM,R,G,B]
+	int arr[4] = {-9,-9,-9,-9}; //[PWM,R,G,B]
 	int LedR, LedG, LedB, len;
 	k = (step_duration)/((cycle_duration)*0.001);   // Number of times the for loop will execute per step
 	
@@ -277,8 +277,9 @@ int main(){
 	for(i=0;i<4;i++){
 		scanf("%d",&arr[i]);
 	}
-	if(arr[0] != 0){
-		if( (arr[0] <= 100 && arr[0] > 0) && (arr[1] < 14 && arr[1] >= 0 ) && (arr[2] < 14 && arr[2] >= 0 ) && (arr[3] < 14 && arr[3] >= 0 ) && isdigit(arr[1]) && isdigit(arr[2]) && isdigit(arr[3])){
+
+	if(arr[0] != 0 ){
+		if( (arr[0] <= 100 && arr[0] > 0) && arr[1] != -9 && arr[2] != -9 && arr[3] != -9 && (arr[1] < 14 && arr[1] >= 0 ) && (arr[2] < 14 && arr[2] >= 0 ) && (arr[3] < 14 && arr[3] >= 0 ) ){
 
 			pwm_on = ( cycle_duration * 1000 * arr[0] ) / 100 ; // each pulse width is of 20ms ( 20*1000 micro sec )
 			pwm_off = (cycle_duration *1000) - pwm_on ;
