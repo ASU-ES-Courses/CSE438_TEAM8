@@ -215,6 +215,7 @@ return NULL;
 void IOClose(void)
 {
 	int FdUnExport;
+	/*
 	FdUnExport = open("/sys/class/gpio/unexport", O_WRONLY);
 	if (FdUnExport < 0){
 		printf("\n gpio Unexport open failed\n");
@@ -257,6 +258,58 @@ void IOClose(void)
 	}
 
 	close(FdUnExport);
+	*/
+	//Red
+	FdUnExport = gpio_unexport(R_GPIO);
+	if(FdUnExport != 0){
+		printf("R_GPIO Pin UnExport error %d \n", R_GPIO);
+	}
+	if(R_LS != -1){
+		FdUnExport = gpio_unexport(R_LS);
+		if(FdUnExport != 0){
+			printf("R_LS Pin UnExport error %d\n", R_LS);
+		}
+	}
+	if(R_MUX != -1){
+		FdUnExport = gpio_unexport(R_MUX);
+		if(FdUnExport != 0){
+			printf("R_MUX Pin UnExport error %d\n", R_MUX);
+		}
+	}
+	//Green
+	FdUnExport = gpio_unexport(G_GPIO);
+	if(FdUnExport != 0){
+		printf("G_GPIO Pin UnExport error %d\n", G_GPIO);
+	}
+	if(G_LS != -1){
+		FdUnExport = gpio_unexport(G_LS);
+		if(FdUnExport != 0){
+			printf("G_LS Pin UnExport error %d\n", G_LS);
+		}
+	}
+	if(G_MUX != -1){
+		FdUnExport = gpio_unexport(G_MUX);
+		if(FdUnExport != 0){
+			printf("G_MUX Pin UnExport error %d\n", G_MUX);
+		}
+	}
+	//Blue
+	FdUnExport = gpio_unexport(B_GPIO);
+	if(FdUnExport != 0){
+		printf("B_GPIO Pin UnExport error %d\n", B_GPIO);
+	}
+	if(B_LS != -1){
+		FdUnExport = gpio_unexport(B_LS);
+		if(FdUnExport != 0){
+			printf("B_LS Pin UnExport error %d\n", B_LS);
+		}
+	}
+	if(B_MUX != -1){
+		FdUnExport = gpio_unexport(B_MUX);
+		if(FdUnExport != 0){
+			printf("B_MUX Pin UnExport error %d\n", B_MUX);
+		}
+	}	
 }
 //MAIN
 int main(){
@@ -459,16 +512,21 @@ int main(){
 		}
 	}
 	else{
-		thread_status = pthread_create( &thread_id, NULL, &mouse_click, NULL);
-		if(thread_status != 0){
-			printf("thread create error status");
-		}
-		printf("Waiting for mouse event\n");
+		if(arr[1] != -9 && arr[2] != -9 && arr[3] != -9){
+			thread_status = pthread_create( &thread_id, NULL, &mouse_click, NULL);
+			if(thread_status != 0){
+				printf("thread create error status");
+			}
+			printf("Waiting for mouse event\n");
 
-		thread_status = pthread_join(thread_id, NULL);
-		if(thread_status != 0){
-			printf("thread join error status\n ");
-		}		
+			thread_status = pthread_join(thread_id, NULL);
+			if(thread_status != 0){
+				printf("thread join error status\n ");
+			}	
+		}
+		else{
+			printf("Enter correct input values...!!\n");
+		}	
 
 	}
 
