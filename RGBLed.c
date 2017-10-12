@@ -298,7 +298,7 @@ int main(){
 	//PWM is not zero light LED
 	if(arr[0] != 0 ){
 		//Condition for checking for valid input
-		if( (arr[0] <= 100 && arr[0] > 0) && arr[1] != -9 && arr[2] != -9 && arr[3] != -9 && (arr[1] < 14 && arr[1] >= 0 ) && (arr[2] < 14 && arr[2] >= 0 ) && (arr[3] < 14 && arr[3] >= 0 ) ){
+		if( (arr[0] <= 100 && arr[0] > 0) && arr[1] != -9 && arr[2] != -9 && arr[3] != -9 && (arr[1] < 14 && arr[1] >= 0 ) && (arr[2] < 14 && arr[2] >= 0 ) && (arr[3] < 14 && arr[3] >= 0 ) && (arr[1] != arr[2]) && (arr[2] && arr[3]) && (arr[1] != arr[3] ) ){
 
 			pwm_on = ( cycle_duration * 1000 * arr[0] ) / 100 ; // each pulse width is of 20ms ( 20*1000 micro sec )
 			pwm_off = (cycle_duration *1000) - pwm_on ;
