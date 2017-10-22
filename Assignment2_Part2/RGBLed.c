@@ -9,11 +9,11 @@
 #include<linux/string.h>
 #include <linux/gpio.h>
 #include<linux/delay.h>
-
+#include<linux/ioctl.h>
 
 #define DEVICE_NAME "RGBLed"
-//#define DEVICE_NAME1 "RGBLed_dev1"			// device-1 name to be created and registered
-
+#define CONFIG __IO
+#define UNCONFIG __IO
 
 MODULE_LICENSE("GPL");              
 MODULE_AUTHOR("Achal Shah & Aditi Sonik");      
@@ -127,83 +127,90 @@ ssize_t RGBLed_write(struct file *file, const char *user_buff, size_t count, lof
 //int RGBLed_ioctl(struct inode * inode, struct file * file, unsigned long _r, unsigned int _g, unsigned int _b){
 int RGBLed_ioctl(struct inode * inode, struct file * file, unsigned long x, unsigned int y){
 	int status = 0,_r,_g,_b;
-
+	
 	printk(KERN_ALERT"Configuring.......through %s function\n", __FUNCTION__);
-	_r = 9;
-	_g = 10;
-	_b = 13;
-	//Check valid inputs or not
+	switch(x){
 
-	//Selecting GPIO Pins
-	R_GPIO = GPIO_PIN[_r];
-	G_GPIO = GPIO_PIN[_g];
-	B_GPIO = GPIO_PIN[_b];
+		case CONFIG:
+			_r = 9;
+			_g = 10;
+			_b = 13;
+			//Check valid inputs or not
 
-	//Selecting Level Shifter Pins
-	R_LS = LS_PIN[_r];
-	G_LS = LS_PIN[_g];
-	B_LS = LS_PIN[_b];
+			//Selecting GPIO Pins
+			R_GPIO = GPIO_PIN[_r];
+			G_GPIO = GPIO_PIN[_g];
+			B_GPIO = GPIO_PIN[_b];
 
-	//Selecting MUX Pins
-	R_MUX = MUX_PIN[_r];
-	G_MUX = MUX_PIN[_g];
-	B_MUX = MUX_PIN[_b];
+			//Selecting Level Shifter Pins
+			R_LS = LS_PIN[_r];
+			G_LS = LS_PIN[_g];
+			B_LS = LS_PIN[_b];
 
-	//GPIO PINS------------------//
-	status =  gpio_direction_output(R_GPIO, LedOFF);   		// Set the gpio to be in output mode and turn off
-	status =  gpio_export(R_GPIO, false);					//causes gpio pin to appear in /sys/class/gpio & the second argument prevents the direction from being changed
-	
-	status =  gpio_direction_output(G_GPIO, LedOFF);
-	status =  gpio_export(G_GPIO, false);
+			//Selecting MUX Pins
+			R_MUX = MUX_PIN[_r];
+			G_MUX = MUX_PIN[_g];
+			B_MUX = MUX_PIN[_b];
 
-	status =  gpio_direction_output(B_GPIO, LedOFF);
-	status =  gpio_export(B_GPIO, false);
-	
-	//LS PINS--------------------//
-	if(R_LS != -1){
-		status =  gpio_direction_output(R_LS, LedOFF);
-		status =  gpio_export(R_LS, false);
-		gpio_set_value(R_LS, 0);
-	}
+			//GPIO PINS------------------//
+			status =  gpio_direction_output(R_GPIO, LedOFF);   		// Set the gpio to be in output mode and turn off
+			status =  gpio_export(R_GPIO, false);					//causes gpio pin to appear in /sys/class/gpio & the second argument prevents the direction from being changed
+			
+			status =  gpio_direction_output(G_GPIO, LedOFF);
+			status =  gpio_export(G_GPIO, false);
 
-	if(G_LS != -1){
-		status =  gpio_direction_output(G_LS, LedOFF);
-		status =  gpio_export(G_LS, false);
-		gpio_set_value(G_LS, 0);
-	}
+			status =  gpio_direction_output(B_GPIO, LedOFF);
+			status =  gpio_export(B_GPIO, false);
+			
+			//LS PINS--------------------//
+			if(R_LS != -1){
+				status =  gpio_direction_output(R_LS, LedOFF);
+				status =  gpio_export(R_LS, false);
+				gpio_set_value(R_LS, 0);
+			}
 
-	if(B_LS != -1){
-		status =  gpio_direction_output(B_LS, LedOFF);
-		status =  gpio_export(B_LS, false);
-		gpio_set_value(B_LS, 0);
-	}
+			if(G_LS != -1){
+				status =  gpio_direction_output(G_LS, LedOFF);
+				status =  gpio_export(G_LS, false);
+				gpio_set_value(G_LS, 0);
+			}
 
-	//MUX PINS-----------------------//
-	if(R_MUX != -1){
-		if(R_MUX < 64 || R_MUX > 79){
-			status =  gpio_direction_output(R_MUX, LedOFF);
-		}
-		status =  gpio_export(R_MUX, false);
-		gpio_set_value(R_MUX, 0);
-	}
+			if(B_LS != -1){
+				status =  gpio_direction_output(B_LS, LedOFF);
+				status =  gpio_export(B_LS, false);
+				gpio_set_value(B_LS, 0);
+			}
 
-	if(G_MUX != -1){
-		if(G_MUX < 64 || G_MUX > 79){
-			status =  gpio_direction_output(G_MUX, LedOFF);
-		}
-		status =  gpio_export(G_MUX, false);
-		gpio_set_value(G_MUX, 0);
-	}
+			//MUX PINS-----------------------//
+			if(R_MUX != -1){
+				if(R_MUX < 64 || R_MUX > 79){
+					status =  gpio_direction_output(R_MUX, LedOFF);
+				}
+				status =  gpio_export(R_MUX, false);
+				gpio_set_value(R_MUX, 0);
+			}
 
-	if(B_MUX != -1){
-		if(B_MUX < 64 || B_MUX > 79){
-			status =  gpio_direction_output(B_MUX, LedOFF);
-		}
-		status =  gpio_export(B_MUX, false);
-		gpio_set_value(B_MUX, 0);
-	}
-	//-----------------------------//
-	printk(KERN_ALERT"Configured RGBLed\n", __FUNCTION__);
+			if(G_MUX != -1){
+				if(G_MUX < 64 || G_MUX > 79){
+					status =  gpio_direction_output(G_MUX, LedOFF);
+				}
+				status =  gpio_export(G_MUX, false);
+				gpio_set_value(G_MUX, 0);
+			}
+
+			if(B_MUX != -1){
+				if(B_MUX < 64 || B_MUX > 79){
+					status =  gpio_direction_output(B_MUX, LedOFF);
+				}
+				status =  gpio_export(B_MUX, false);
+				gpio_set_value(B_MUX, 0);
+			}
+			//-----------------------------//
+			break;
+		case UNCONFIG:
+
+			break;
+		printk(KERN_ALERT"Configured RGBLed\n", __FUNCTION__);
 	return status;
 
 }
