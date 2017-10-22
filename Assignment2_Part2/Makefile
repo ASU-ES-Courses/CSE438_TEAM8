@@ -15,7 +15,7 @@ endif
 
 APP = main
 
-obj-m:= squeue.o
+obj-m:= RGBLed.o
 
 all:
 	$(MAKE) -C $(KDIR) M=$(PWD) modules
