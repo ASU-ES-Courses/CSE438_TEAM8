@@ -9,11 +9,11 @@
 #include<linux/string.h>
 #include <linux/gpio.h>
 #include<linux/delay.h>
-#include<linux/ioctl.h>
+//#include<linux/ioctl.h>
 
 #define DEVICE_NAME "RGBLed"
-#define CONFIG __IO
-#define UNCONFIG __IO
+//#define CONFIG __IO
+//#define UNCONFIG __IO
 
 MODULE_LICENSE("GPL");              
 MODULE_AUTHOR("Achal Shah & Aditi Sonik");      
@@ -85,11 +85,11 @@ ssize_t RGBLed_write(struct file *file, const char *user_buff, size_t count, lof
 			gpio_set_value(R_GPIO, 1);
 			msleep(10);
 			break;
-		case 3:
+		case 4:
 			gpio_set_value(B_GPIO, 1);
 			msleep(10);
 			break;
-		case 4:
+		case 3:
 			gpio_set_value(R_GPIO, 1);
 			gpio_set_value(G_GPIO, 1);
 			msleep(10);
@@ -125,13 +125,18 @@ ssize_t RGBLed_write(struct file *file, const char *user_buff, size_t count, lof
 }
 
 //int RGBLed_ioctl(struct inode * inode, struct file * file, unsigned long _r, unsigned int _g, unsigned int _b){
-int RGBLed_ioctl(struct inode * inode, struct file * file, unsigned long x, unsigned int y){
+int RGBLed_ioctl(struct inode * inode, struct file * file, unsigned long x, unsigned int* args){
 	int status = 0,_r,_g,_b;
-	
+	_r = args[1];
+	_g = args[2];
+	_b = args[3];
+	printk("_r = %d\n",_r);
+	printk("_g = %d\n",_g);
+	printk("_b = %d\n",_b);
 	printk(KERN_ALERT"Configuring.......through %s function\n", __FUNCTION__);
 	switch(x){
 
-		case CONFIG:
+		case 0://CONFIG:
 			_r = 9;
 			_g = 10;
 			_b = 13;
@@ -207,10 +212,13 @@ int RGBLed_ioctl(struct inode * inode, struct file * file, unsigned long x, unsi
 			}
 			//-----------------------------//
 			break;
-		case UNCONFIG:
+			
+		case 1://UNCONFIG:
 
 			break;
-		printk(KERN_ALERT"Configured RGBLed\n", __FUNCTION__);
+			
+		}
+		//printk(KERN_ALERT"Configured RGBLed\n", __FUNCTION__);
 	return status;
 
 }

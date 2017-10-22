@@ -11,10 +11,22 @@ int main(){
 
 	int fd = 0,return_value,i;
 	int arr[4] = {-9,-9,-9,-9};						//[PWM,R,G,B] with default "-9" value
-	//unsigned long CONFIG = 0;
-	int y = 0;
-	int arr_pattern[7] = {1,2,3,4,5,6,7}; //{'R','G','B','RG','RB','GB','RGB'}
+	unsigned long x = 0;
+	//int y = 0;
+	int arr_pattern[7] = {1,2,4,3,5,6,7}; //{'R','G','B','RG','RB','GB','RGB'}
+	/*
 
+	  color	  LS_bit  case
+	   _#_	   _BGR_   _#_
+		R 		001		1
+		G 		010		2
+		B 		100		4
+		RG 		011		3
+		RB 		101		5
+		GB 		110		6
+		RGB 	111		7
+
+	*/
 	printf("Enter Integer input values in order [ percentage of PWM, R_IO, G_IO, B_IO ]\n");
 	
 	for(i=0;i<4;i++){
@@ -29,7 +41,8 @@ int main(){
 	}
 	else{
 		//return_value = ioctl(fd, arr[1], arr[2], arr[3]);
-		return_value = ioctl(fd,CONFIG,y);
+		// 
+		return_value = ioctl(fd,x,arr);
 		if(return_value < 0){
 			printf("Unable to write to RGBLed Device or Invalid input\n");
 			errno = 22;//ENIVAL = 22
