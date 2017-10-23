@@ -34,10 +34,14 @@ int MUX_PIN[] = {-1,45,77,76,-1,66,68,-1,-1,70,74,44,-1,46};
 
 int LedOFF = 0; // To see LED ON or OFF; 0 = OFF
 
+struct values{
+	int arr[4];
+	//int cmd;
+};
 struct RGBLed_dev {
 	struct cdev cdev;							// The cdev structure 
 	char name[20];		                		// Name of device
-	char pattern;
+	int pattern;
 	//int array_input[4];
 } *RGBLed_dev1;
 
@@ -74,6 +78,7 @@ ssize_t RGBLed_write(struct file *file, const char *user_buff, size_t count, lof
 	printk(KERN_ALERT"Writing.......through %s function\n", __FUNCTION__);
 	
 	get_user(RGBLed_dev1->pattern, user_buff);
+	//printk("pattern = %d\n",RGBLed_dev1->pattern);
 	switch(RGBLed_dev1->pattern){
 		// case number represented in sequence {'R','G','B','RG','RB','GB','RGB'}
 		case 1:
@@ -123,109 +128,111 @@ ssize_t RGBLed_write(struct file *file, const char *user_buff, size_t count, lof
 	return status;								
 }
 
-//int RGBLed_ioctl(struct inode * inode, struct file * file, unsigned long _r, unsigned int _g, unsigned int _b){
-long RGBLed_ioctl(struct inode * inode, struct file * file, unsigned long x, unsigned int* args){
-	int _r,_g,_b;
-	int array_input[4] = {-9,-9,-9,-9};
-	long status = 0;
-	
-	status = copy_from_user(array_input,args,sizeof(int*));
+static long RGBLed_ioctl(struct file * file, unsigned int  x, unsigned long args){
+	long status = 0,i;
+	struct values *object;
+	int array[4];
+
+	printk(KERN_ALERT"Running.. %s function\n", __FUNCTION__);
+
+	object = (struct values *)kmalloc(sizeof(struct values), GFP_KERNEL);
+	//default values for PWM and LED pins
+	object->arr[0] = -9;
+	object->arr[1] = -9;
+	object->arr[2] = -9;
+	object->arr[3] = -9;
+	status = copy_from_user(object,(struct values*)args,sizeof(struct values));
 	if(status > 0){
 		printk("failure copy_from_user \n");
-		printk("status = %ld\n",status);
+	}	
+
+	//Check valid inputs or not
+	for(i=0;i<4;i++){
+		//for checking floating point values
+		/*if(object->arr[i] != (int)object->arr[i]){
+			break;
+			
+		}*/
+		array[i] = (int)object->arr[i];
 	}
-	_r = array_input[1];
-	_g = array_input[2];
-	_b = array_input[3];
-	printk("_r = %d\n",_r);
-	printk("_g = %d\n",_g);
-	printk("_b = %d\n",_b);
-	printk(KERN_ALERT"Configuring.......through %s function\n", __FUNCTION__);
-	switch(x){
+	
+	if( (array[0] < 101 && array[0] >= 0) && array[1] != -9 && array[2] != -9 && array[3] != -9 && 
+		(array[1] < 14 && array[1] >= 0 ) && (array[2] < 14 && array[2] >= 0 ) && (array[3] < 14 && array[3] >= 0 ) && 
+		(array[1] != array[2]) && (array[2] != array[3]) && (array[1] != array[3] ) ){
 
-		case CONFIG:
-			_r = 9;
-			_g = 10;
-			_b = 13;
-			//Check valid inputs or not
+		switch(x){
+			case CONFIG:
+				printk("Configuring device..\n");			
 
-			//Selecting GPIO Pins
-			R_GPIO = GPIO_PIN[_r];
-			G_GPIO = GPIO_PIN[_g];
-			B_GPIO = GPIO_PIN[_b];
+				//Selecting GPIO Pins
+				R_GPIO = GPIO_PIN[array[1]];
+				G_GPIO = GPIO_PIN[array[2]];
+				B_GPIO = GPIO_PIN[array[3]];
 
-			//Selecting Level Shifter Pins
-			R_LS = LS_PIN[_r];
-			G_LS = LS_PIN[_g];
-			B_LS = LS_PIN[_b];
+				//Selecting Level Shifter Pins
+				R_LS = LS_PIN[array[1]];
+				G_LS = LS_PIN[array[2]];
+				B_LS = LS_PIN[array[3]];
 
-			//Selecting MUX Pins
-			R_MUX = MUX_PIN[_r];
-			G_MUX = MUX_PIN[_g];
-			B_MUX = MUX_PIN[_b];
+				//Selecting MUX Pins
+				R_MUX = MUX_PIN[array[1]];
+				G_MUX = MUX_PIN[array[2]];
+				B_MUX = MUX_PIN[array[3]];
 
-			//GPIO PINS------------------//
-			status =  gpio_direction_output(R_GPIO, LedOFF);   		// Set the gpio to be in output mode and turn off
-			status =  gpio_export(R_GPIO, false);					//causes gpio pin to appear in /sys/class/gpio & the second argument prevents the direction from being changed
-			
-			status =  gpio_direction_output(G_GPIO, LedOFF);
-			status =  gpio_export(G_GPIO, false);
-
-			status =  gpio_direction_output(B_GPIO, LedOFF);
-			status =  gpio_export(B_GPIO, false);
-			
-			//LS PINS--------------------//
-			if(R_LS != -1){
-				status =  gpio_direction_output(R_LS, LedOFF);
-				status =  gpio_export(R_LS, false);
-				gpio_set_value(R_LS, 0);
-			}
-
-			if(G_LS != -1){
-				status =  gpio_direction_output(G_LS, LedOFF);
-				status =  gpio_export(G_LS, false);
-				gpio_set_value(G_LS, 0);
-			}
-
-			if(B_LS != -1){
-				status =  gpio_direction_output(B_LS, LedOFF);
-				status =  gpio_export(B_LS, false);
-				gpio_set_value(B_LS, 0);
-			}
-
-			//MUX PINS-----------------------//
-			if(R_MUX != -1){
-				if(R_MUX < 64 || R_MUX > 79){
-					status =  gpio_direction_output(R_MUX, LedOFF);
+				//GPIO PINS------------------//
+				status =  gpio_direction_output(R_GPIO, LedOFF);   		// Set the gpio to be in output mode and turn off											
+				status =  gpio_direction_output(G_GPIO, LedOFF);
+				status =  gpio_direction_output(B_GPIO, LedOFF);
+				
+				//LS PINS--------------------//
+				if(R_LS != -1){
+					status =  gpio_direction_output(R_LS, LedOFF);
+					gpio_set_value(R_LS, 0);
 				}
-				status =  gpio_export(R_MUX, false);
-				gpio_set_value(R_MUX, 0);
-			}
 
-			if(G_MUX != -1){
-				if(G_MUX < 64 || G_MUX > 79){
-					status =  gpio_direction_output(G_MUX, LedOFF);
+				if(G_LS != -1){
+					status =  gpio_direction_output(G_LS, LedOFF);
+					gpio_set_value(G_LS, 0);
 				}
-				status =  gpio_export(G_MUX, false);
-				gpio_set_value(G_MUX, 0);
-			}
 
-			if(B_MUX != -1){
-				if(B_MUX < 64 || B_MUX > 79){
-					status =  gpio_direction_output(B_MUX, LedOFF);
+				if(B_LS != -1){
+					status =  gpio_direction_output(B_LS, LedOFF);
+					gpio_set_value(B_LS, 0);
 				}
-				status =  gpio_export(B_MUX, false);
-				gpio_set_value(B_MUX, 0);
-			}
-			//-----------------------------//
-			break;
-			
-		case UNCONFIG:
 
-			break;
-			
-		}
-		//printk(KERN_ALERT"Configured RGBLed\n", __FUNCTION__);
+				//MUX PINS-----------------------//
+				if(R_MUX != -1){
+					if(R_MUX < 64 || R_MUX > 79){
+						status =  gpio_direction_output(R_MUX, LedOFF);
+					}
+					gpio_set_value(R_MUX, 0);
+				}
+
+				if(G_MUX != -1){
+					if(G_MUX < 64 || G_MUX > 79){
+						status =  gpio_direction_output(G_MUX, LedOFF);
+					}
+					gpio_set_value(G_MUX, 0);
+				}
+
+				if(B_MUX != -1){
+					if(B_MUX < 64 || B_MUX > 79){
+						status =  gpio_direction_output(B_MUX, LedOFF);
+					}
+					gpio_set_value(B_MUX, 0);
+				}
+				//-----------------------------//
+				break;
+				
+			default:
+				printk("No case specified for device\n");
+				break;				
+		}//End of switch
+	}//End of if
+	else{
+		status = -1;
+	}
+	kfree(object);
 	return status;
 
 }
@@ -274,13 +281,7 @@ int __init RGBLed_module_init(void)
 		RGBLed_device = device_create(RGBLed_class, NULL, MKDEV(MAJOR(dev_num), 0), NULL, DEVICE_NAME);
 
 		strcpy(RGBLed_dev1->name,DEVICE_NAME);
-		/*
-		//default values for PWM and LED pins
-		RGBLed_dev1->array_input[0] = -9;
-		RGBLed_dev1->array_input[1] = -9;
-		RGBLed_dev1->array_input[2] = -9;
-		RGBLed_dev1->array_input[3] = -9;
-		*/
+		
 		printk(KERN_ALERT"RGBLed driver installed by %s\n", __FUNCTION__);
 
 		return 0;
