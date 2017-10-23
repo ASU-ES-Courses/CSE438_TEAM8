@@ -6,12 +6,14 @@
 #include <sys/ioctl.h>
 #include<string.h>
 
+#define CONFIG 1
+#define UNCONFIG 0
 
 int main(){
 
 	int fd = 0,return_value,i;
 	int arr[4] = {-9,-9,-9,-9};						//[PWM,R,G,B] with default "-9" value
-	unsigned long x = 0;
+	//unsigned long x = 0;
 	//int y = 0;
 	int arr_pattern[7] = {1,2,4,3,5,6,7}; //{'R','G','B','RG','RB','GB','RGB'}
 	/*
@@ -42,7 +44,7 @@ int main(){
 	else{
 		//return_value = ioctl(fd, arr[1], arr[2], arr[3]);
 		// 
-		return_value = ioctl(fd,x,arr);
+		return_value = ioctl(fd,CONFIG,arr);
 		if(return_value < 0){
 			printf("Unable to write to RGBLed Device or Invalid input\n");
 			errno = 22;//ENIVAL = 22
@@ -59,6 +61,7 @@ int main(){
 			// When PWM is 0
 			else 
 				write(fd,"0",sizeof(int));
+			break;
 		}
 		
 	}

@@ -9,11 +9,10 @@
 #include<linux/string.h>
 #include <linux/gpio.h>
 #include<linux/delay.h>
-//#include<linux/ioctl.h>
 
 #define DEVICE_NAME "RGBLed"
-//#define CONFIG __IO
-//#define UNCONFIG __IO
+#define CONFIG 1
+#define UNCONFIG 0
 
 MODULE_LICENSE("GPL");              
 MODULE_AUTHOR("Achal Shah & Aditi Sonik");      
@@ -39,7 +38,7 @@ struct RGBLed_dev {
 	struct cdev cdev;							// The cdev structure 
 	char name[20];		                		// Name of device
 	char pattern;
-	
+	//int array_input[4];
 } *RGBLed_dev1;
 
 
@@ -125,18 +124,26 @@ ssize_t RGBLed_write(struct file *file, const char *user_buff, size_t count, lof
 }
 
 //int RGBLed_ioctl(struct inode * inode, struct file * file, unsigned long _r, unsigned int _g, unsigned int _b){
-int RGBLed_ioctl(struct inode * inode, struct file * file, unsigned long x, unsigned int* args){
-	int status = 0,_r,_g,_b;
-	_r = args[1];
-	_g = args[2];
-	_b = args[3];
+long RGBLed_ioctl(struct inode * inode, struct file * file, unsigned long x, unsigned int* args){
+	int _r,_g,_b;
+	int array_input[4] = {-9,-9,-9,-9};
+	long status = 0;
+	
+	status = copy_from_user(array_input,args,sizeof(int*));
+	if(status > 0){
+		printk("failure copy_from_user \n");
+		printk("status = %ld\n",status);
+	}
+	_r = array_input[1];
+	_g = array_input[2];
+	_b = array_input[3];
 	printk("_r = %d\n",_r);
 	printk("_g = %d\n",_g);
 	printk("_b = %d\n",_b);
 	printk(KERN_ALERT"Configuring.......through %s function\n", __FUNCTION__);
 	switch(x){
 
-		case 0://CONFIG:
+		case CONFIG:
 			_r = 9;
 			_g = 10;
 			_b = 13;
@@ -213,7 +220,7 @@ int RGBLed_ioctl(struct inode * inode, struct file * file, unsigned long x, unsi
 			//-----------------------------//
 			break;
 			
-		case 1://UNCONFIG:
+		case UNCONFIG:
 
 			break;
 			
@@ -267,7 +274,13 @@ int __init RGBLed_module_init(void)
 		RGBLed_device = device_create(RGBLed_class, NULL, MKDEV(MAJOR(dev_num), 0), NULL, DEVICE_NAME);
 
 		strcpy(RGBLed_dev1->name,DEVICE_NAME);
-
+		/*
+		//default values for PWM and LED pins
+		RGBLed_dev1->array_input[0] = -9;
+		RGBLed_dev1->array_input[1] = -9;
+		RGBLed_dev1->array_input[2] = -9;
+		RGBLed_dev1->array_input[3] = -9;
+		*/
 		printk(KERN_ALERT"RGBLed driver installed by %s\n", __FUNCTION__);
 
 		return 0;
