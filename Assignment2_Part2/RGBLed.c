@@ -58,34 +58,52 @@ enum hrtimer_restart timer_callback(struct hrtimer *timer_for_restart){
   	ktime_t currtime , interval;
 
 	  	if(flag == 0){
-	  		currtime  = ktime_get();
-			interval = ktime_set(0,on_timer_interval_ns);						//on timer
-			hrtimer_forward(timer_for_restart, currtime , interval);
-	  				  		
-		  	if(pin_flag[0] != 0){
+	  			  				  		
+		  	if(pin_flag[0] != 0 && pin_flag[1] == 0 && pin_flag[2] == 0){ //case 1: R
 				gpio_set_value(R_GPIO, 1);
 			}
-			if(pin_flag[1] != 0){
+			if(pin_flag[0] == 0 && pin_flag[1] != 0 && pin_flag[2] == 0){ //case 2: G
 				gpio_set_value(G_GPIO, 1);
 			}
-			if(pin_flag[2] != 0){
+			if(pin_flag[0] == 0 && pin_flag[1] == 0 && pin_flag[2] != 0){ //case 3: B
+				gpio_set_value(B_GPIO, 1);
+			}
+			if(pin_flag[0] != 0 && pin_flag[1] != 0 && pin_flag[2] == 0){ //case 4: R G
+				gpio_set_value(R_GPIO, 1);
+				gpio_set_value(G_GPIO, 1);
+			}
+			if(pin_flag[0] != 0 && pin_flag[1] == 0 && pin_flag[2] != 0){ //case 5: R B
+				gpio_set_value(R_GPIO, 1);
+				gpio_set_value(B_GPIO, 1);
+			}
+			if(pin_flag[0] == 0 && pin_flag[1] != 0 && pin_flag[2] != 0){ //case 6: G B
+				gpio_set_value(G_GPIO, 1);
+				gpio_set_value(B_GPIO, 1);
+			}
+			if(pin_flag[0] != 0 && pin_flag[1] != 0 && pin_flag[2] != 0){ //case 7: R G B
+				gpio_set_value(R_GPIO, 1);
+				gpio_set_value(G_GPIO, 1);
 				gpio_set_value(B_GPIO, 1);
 			}
 		  	flag = 1;
-		  	return HRTIMER_RESTART;  
+		  	currtime  = ktime_get();
+			interval = ktime_set(0,on_timer_interval_ns);						//on timer
+			hrtimer_forward(timer_for_restart, currtime , interval);
+		  	//return HRTIMER_RESTART;  
 	  	}
 	  	else{
-	  		currtime  = ktime_get();
-	  		off_timer_interval_ns = ((cycle_duration * 1000) - on_timer_interval_ns);
-			interval = ktime_set(0,off_timer_interval_ns);						//off timer 
-			hrtimer_forward(timer_for_restart, currtime , interval);
-
+	  		
 	  		gpio_set_value(R_GPIO, 0);
 			gpio_set_value(G_GPIO, 0);
 			gpio_set_value(B_GPIO, 0);
 		  	flag = 0;
-		  	return HRTIMER_NORESTART;
+		  	currtime  = ktime_get();
+	  		off_timer_interval_ns = ((cycle_duration * 1000000) - on_timer_interval_ns);
+			interval = ktime_set(0,off_timer_interval_ns);						//off timer 
+			hrtimer_forward(timer_for_restart, currtime , interval);
+		  	//return HRTIMER_RESTART;
 	  	}
+	  	return HRTIMER_RESTART;
 	  	
 }
 
@@ -157,12 +175,13 @@ static long RGBLed_ioctl(struct file * file, unsigned int  x, unsigned long args
 		array[i] = (int)object->arr[i];
 	}
 
-	on_timer_interval_ns = cycle_duration * array[0] * 100000; // in nano-sec
+	on_timer_interval_ns = cycle_duration * array[0] * 10000; // in nano-sec
 	ktime_on = ktime_set(0,on_timer_interval_ns); //(sec,Nsec)	
 	
 	if( (array[0] < 101 && array[0] >= 0) && array[1] != -9 && array[2] != -9 && array[3] != -9 && 
 		(array[1] < 14 && array[1] >= 0 ) && (array[2] < 14 && array[2] >= 0 ) && (array[3] < 14 && array[3] >= 0 ) && 
-		(array[1] != array[2]) && (array[2] != array[3]) && (array[1] != array[3] ) ){
+		(array[1] != array[2]) && (array[2] != array[3]) && (array[1] != array[3] ) && 
+		(array[1] != 7 && array[1] != 8 )  && (array[2] != 7 && array[2] != 8 ) && (array[3] != 7 && array[3] != 8 ) ){
 
 		switch(x){
 			case CONFIG:
@@ -191,17 +210,17 @@ static long RGBLed_ioctl(struct file * file, unsigned int  x, unsigned long args
 				//LS PINS--------------------//
 				if(R_LS != -1){
 					status =  gpio_direction_output(R_LS, LedOFF);
-					//gpio_set_value(R_LS, 0);
+					gpio_set_value_cansleep(R_LS, 0);
 				}
 
 				if(G_LS != -1){
 					status =  gpio_direction_output(G_LS, LedOFF);
-					//gpio_set_value(G_LS, 0);
+					gpio_set_value_cansleep(G_LS, 0);
 				}
 
 				if(B_LS != -1){
 					status =  gpio_direction_output(B_LS, LedOFF);
-					//gpio_set_value(B_LS, 0);
+					gpio_set_value_cansleep(B_LS, 0);
 				}
 
 				//MUX PINS-----------------------//
@@ -209,21 +228,21 @@ static long RGBLed_ioctl(struct file * file, unsigned int  x, unsigned long args
 					if(R_MUX < 64 || R_MUX > 79){
 						status =  gpio_direction_output(R_MUX, LedOFF);
 					}
-					//gpio_set_value(R_MUX, 0);
+					gpio_set_value_cansleep(R_MUX, 0);
 				}
 
 				if(G_MUX != -1){
 					if(G_MUX < 64 || G_MUX > 79){
 						status =  gpio_direction_output(G_MUX, LedOFF);
 					}
-					//gpio_set_value(G_MUX, 0);
+					gpio_set_value_cansleep(G_MUX, 0);
 				}
 
 				if(B_MUX != -1){
 					if(B_MUX < 64 || B_MUX > 79){
 						status =  gpio_direction_output(B_MUX, LedOFF);
 					}
-					//gpio_set_value(B_MUX, 0);
+					gpio_set_value_cansleep(B_MUX, 0);
 				}
 				//-----------------------------//
 				break;

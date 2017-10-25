@@ -1,9 +1,9 @@
 #include<stdio.h>
-#include <sys/stat.h> 
-#include <fcntl.h>
-#include <unistd.h>
+#include<sys/stat.h> 
+#include<fcntl.h>
+#include<unistd.h>
 #include<errno.h>
-#include <sys/ioctl.h>
+#include<sys/ioctl.h>
 #include<string.h>
 #include<malloc.h>
 #include<pthread.h>
@@ -44,12 +44,12 @@ return NULL;
 
 int main(){
 
-	int fd = 0,return_value,i,thread_status = 0;
+	int fd = 0,return_value,i,thread_status = 0,k = 25;
 	struct values *object;
 	struct timespec req,rem;
 	req.tv_sec = 0;
-	req.tv_nsec = (1000000000/2);
-	int arr_pattern[7] = {1,2,4,3,5,6,7}; //{'R','G','B','RG','RB','GB','RGB'}
+	req.tv_nsec = (1000000000/2);			// = 0.5 sec
+	int arr_pattern[7] = {1,2,4,3,5,6,7}; 	//{'R','G','B','RG','RB','GB','RGB'}
 	
 	object = (struct values *)malloc(sizeof(struct values));
 	printf("Enter Integer input values in order [ percentage of PWM, R_IO, G_IO, B_IO ]\n");
@@ -83,10 +83,19 @@ int main(){
 					}
 					//When PWM is not equal to 0
 					if(object->arr[0] != 0){
+
 						for(i=0;i<7;i++){
 
-							write(fd,&arr_pattern[i],sizeof(arr_pattern[i]));
-							nanosleep(&req, &rem);
+							//for(i=0;i<k;i++){
+
+							/*clock_gettime(CLOCK_MONOTONIC, &req);
+
+							while(1){
+								if( (req.tv_nsec - rem.tv_nsec) > (1000000000/2) ){
+									break;
+								}*/
+								write(fd,&arr_pattern[i],sizeof(arr_pattern[i]));
+								nanosleep(&req, &rem);
 							//Check for termination
 							if(terminate == 1){
 								break;
