@@ -18,7 +18,6 @@ pthread_t  thread_id;
 
 struct values{
 	int arr[4];
-	//int cmd;
 };
 
 //Mouse Event detection function
@@ -48,8 +47,8 @@ int main(){
 	int fd = 0,return_value,i,thread_status = 0;
 	struct values *object;
 	struct timespec req,rem;
-	req.tv_sec = 5;
-	req.tv_nsec = 0;
+	req.tv_sec = 0;
+	req.tv_nsec = (1000000000/2);
 	int arr_pattern[7] = {1,2,4,3,5,6,7}; //{'R','G','B','RG','RB','GB','RGB'}
 	
 	object = (struct values *)malloc(sizeof(struct values));
@@ -65,16 +64,14 @@ int main(){
 		//return -1;
 	}
 	else{
-		//object->cmd = CONFIG;
 		return_value = ioctl(fd,CONFIG,object);
-		printf("return = %d\n",return_value);
-		//invalid inputs
 		if(return_value < 0){
-			printf("Unable to write to RGBLed Device or Invalid input\n");
-			errno = 22;//ENIVAL = 22
+			printf("Unable to write to RGBLed Device Invalid input\n");
+			errno = 22;		//ENIVAL = 22
 		}
 		//valid inputs
 		else{	
+			//Creating a thread to capture mouse click events
 			thread_status = pthread_create( &thread_id, NULL, &mouse_click, NULL);
 			if(thread_status != 0){
 				printf("thread create error status");
@@ -87,7 +84,7 @@ int main(){
 					//When PWM is not equal to 0
 					if(object->arr[0] != 0){
 						for(i=0;i<7;i++){
-							//printf("new pattern\n");
+
 							write(fd,&arr_pattern[i],sizeof(arr_pattern[i]));
 							nanosleep(&req, &rem);
 							//Check for termination
@@ -98,7 +95,7 @@ int main(){
 					}
 					// When PWM is 0
 					else {
-						write(fd,"0",sizeof(int));	
+						write(fd,0,sizeof(int));	
 					}	
 
 				}

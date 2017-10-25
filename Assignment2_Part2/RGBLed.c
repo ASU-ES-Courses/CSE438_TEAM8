@@ -16,6 +16,7 @@
 
 #define DEVICE_NAME "RGBLed"
 #define CONFIG 1
+#define cycle_duration 20   														//Value in milliseconds
 
 MODULE_LICENSE("GPL");              
 MODULE_AUTHOR("Achal Shah & Aditi Sonik");      
@@ -27,10 +28,9 @@ static dev_t dev_num;																//For allocating device number
 struct class *RGBLed_class; 														//For allocating class number
 static struct device *RGBLed_device;												//creating object of DEVICE structure
 
-unsigned long on_timer_interval_s = 1; //PWM 50%
-//unsigned long off_timer_interval_s = 0.01;
+unsigned long on_timer_interval_ns, off_timer_interval_ns; 
 static struct hrtimer hr_timer;
-ktime_t ktime_on;//, ktime_off;
+ktime_t ktime_on;
 
 int R_GPIO, R_LS, R_MUX;
 int G_GPIO, G_LS, G_MUX;
@@ -56,17 +56,12 @@ struct RGBLed_dev {
 //logic taken from https://gist.github.com/maggocnx/5946907#file-timertest-c-L15
 enum hrtimer_restart timer_callback(struct hrtimer *timer_for_restart){              
   	ktime_t currtime , interval;
-  	//printk(KERN_ALERT"In callback function");
-  	currtime  = ktime_get();
-	interval = ktime_set(on_timer_interval_s,0);//timer_interval_ns); 			//on timer
-	hrtimer_forward(timer_for_restart, currtime , interval);
 
-  	//if(RGBLed_dev1->pattern != 7){
 	  	if(flag == 0){
-	  		/*currtime  = ktime_get();
-		  	interval = ktime_set(on_timer_interval_s,0);//timer_interval_ns); 			//on timer
-		  	hrtimer_forward(timer_for_restart, currtime , interval);*/
-		  		
+	  		currtime  = ktime_get();
+			interval = ktime_set(0,on_timer_interval_ns);						//on timer
+			hrtimer_forward(timer_for_restart, currtime , interval);
+	  				  		
 		  	if(pin_flag[0] != 0){
 				gpio_set_value(R_GPIO, 1);
 			}
@@ -78,26 +73,20 @@ enum hrtimer_restart timer_callback(struct hrtimer *timer_for_restart){
 			}
 		  	flag = 1;
 		  	return HRTIMER_RESTART;  
-		  	//printk(KERN_ALERT"Exiting if block");
 	  	}
 	  	else{
-	  		/*currtime  = ktime_get();
-		  	interval = ktime_set(on_timer_interval_s,0);//timer_interval_ns); 			//off timer
-		  	hrtimer_forward(timer_for_restart, currtime , interval);*/
-		  	gpio_set_value(R_GPIO, 0);
+	  		currtime  = ktime_get();
+	  		off_timer_interval_ns = ((cycle_duration * 1000) - on_timer_interval_ns);
+			interval = ktime_set(0,off_timer_interval_ns);						//off timer 
+			hrtimer_forward(timer_for_restart, currtime , interval);
+
+	  		gpio_set_value(R_GPIO, 0);
 			gpio_set_value(G_GPIO, 0);
 			gpio_set_value(B_GPIO, 0);
 		  	flag = 0;
 		  	return HRTIMER_NORESTART;
-		  	//printk(KERN_ALERT"Exiting else block");
 	  	}
 	  	
-	 	/*return HRTIMER_RESTART;  */
-	 /*}
-	 else{
-	 	return HRTIMER_NORESTART;
-
-	 } */
 }
 
 int RGBLed_open(struct inode *inode, struct file *file)
@@ -127,36 +116,15 @@ int RGBLed_release(struct inode *inode, struct file *file)
 
 ssize_t RGBLed_write(struct file *file, const char *user_buff, size_t count, loff_t *ppos)
 {
-	int status = 0;//,j=0,k=25;
-	//printk(KERN_ALERT"Writing.......through %s function\n", __FUNCTION__);	
+	int status = 0;
 	
 	get_user(RGBLed_dev1->pattern, user_buff);
-
 	//bitwise operation
-	pin_flag[0] = RGBLed_dev1->pattern&4; //R
+	pin_flag[0] = RGBLed_dev1->pattern&1; //R
 	pin_flag[1] = RGBLed_dev1->pattern&2; //G
-	pin_flag[2] = RGBLed_dev1->pattern&1; //B
+	pin_flag[2] = RGBLed_dev1->pattern&4; //B
 
-	//while(j<k){
-		hrtimer_start(&hr_timer, ktime_on, HRTIMER_MODE_REL);
-	//	hrtimer_start(&hr_timer, ktime_off, HRTIMER_MODE_REL);
-		
-	//	j++;
-	//}
-
-	
-	//msleep(50);
-	//if(RGBLed_dev1->pattern == 7){
-		
-	//}
-	//printk(KERN_ALERT"HRtimer started\n");
-	/*while(j<k){	
-		//gpio_set_value(R_GPIO, 1);				
-							
-		//gpio_set_value(R_GPIO, 0);	
-							
-		j++;
-	}*/
+	hrtimer_start(&hr_timer, ktime_on, HRTIMER_MODE_REL);	
 			
 	return status;								
 }
@@ -174,6 +142,7 @@ static long RGBLed_ioctl(struct file * file, unsigned int  x, unsigned long args
 	object->arr[1] = -9;
 	object->arr[2] = -9;
 	object->arr[3] = -9;
+
 	status = copy_from_user(object,(struct values*)args,sizeof(struct values));
 	if(status > 0){
 		printk("failure copy_from_user \n");
@@ -187,6 +156,9 @@ static long RGBLed_ioctl(struct file * file, unsigned int  x, unsigned long args
 		}*/
 		array[i] = (int)object->arr[i];
 	}
+
+	on_timer_interval_ns = cycle_duration * array[0] * 100000; // in nano-sec
+	ktime_on = ktime_set(0,on_timer_interval_ns); //(sec,Nsec)	
 	
 	if( (array[0] < 101 && array[0] >= 0) && array[1] != -9 && array[2] != -9 && array[3] != -9 && 
 		(array[1] < 14 && array[1] >= 0 ) && (array[2] < 14 && array[2] >= 0 ) && (array[3] < 14 && array[3] >= 0 ) && 
@@ -219,17 +191,17 @@ static long RGBLed_ioctl(struct file * file, unsigned int  x, unsigned long args
 				//LS PINS--------------------//
 				if(R_LS != -1){
 					status =  gpio_direction_output(R_LS, LedOFF);
-					gpio_set_value(R_LS, 0);
+					//gpio_set_value(R_LS, 0);
 				}
 
 				if(G_LS != -1){
 					status =  gpio_direction_output(G_LS, LedOFF);
-					gpio_set_value(G_LS, 0);
+					//gpio_set_value(G_LS, 0);
 				}
 
 				if(B_LS != -1){
 					status =  gpio_direction_output(B_LS, LedOFF);
-					gpio_set_value(B_LS, 0);
+					//gpio_set_value(B_LS, 0);
 				}
 
 				//MUX PINS-----------------------//
@@ -237,21 +209,21 @@ static long RGBLed_ioctl(struct file * file, unsigned int  x, unsigned long args
 					if(R_MUX < 64 || R_MUX > 79){
 						status =  gpio_direction_output(R_MUX, LedOFF);
 					}
-					gpio_set_value(R_MUX, 0);
+					//gpio_set_value(R_MUX, 0);
 				}
 
 				if(G_MUX != -1){
 					if(G_MUX < 64 || G_MUX > 79){
 						status =  gpio_direction_output(G_MUX, LedOFF);
 					}
-					gpio_set_value(G_MUX, 0);
+					//gpio_set_value(G_MUX, 0);
 				}
 
 				if(B_MUX != -1){
 					if(B_MUX < 64 || B_MUX > 79){
 						status =  gpio_direction_output(B_MUX, LedOFF);
 					}
-					gpio_set_value(B_MUX, 0);
+					//gpio_set_value(B_MUX, 0);
 				}
 				//-----------------------------//
 				break;
@@ -269,7 +241,6 @@ static long RGBLed_ioctl(struct file * file, unsigned int  x, unsigned long args
 
 }
 
-
 struct file_operations RGBLed_fops={
 	.owner			= THIS_MODULE,           
 	.open			= RGBLed_open,         
@@ -279,13 +250,9 @@ struct file_operations RGBLed_fops={
 	               
 };
 
-
-
 int __init RGBLed_module_init(void)
 {
-
 	int return1;
-	/*ktime_t ktime;*/
 
 	printk(KERN_ALERT"Installing RGBLed device driver by %s function\n", __FUNCTION__);
 	
@@ -301,7 +268,6 @@ int __init RGBLed_module_init(void)
 			printk(KERN_ALERT"Bad Kmalloc\n"); return -ENOMEM;
 		}
 
-
 		cdev_init(&RGBLed_dev1->cdev, &RGBLed_fops);						//Perform device initialization by connecting the file operations with the cdev 
 		RGBLed_dev1->cdev.owner = THIS_MODULE;
 
@@ -316,20 +282,13 @@ int __init RGBLed_module_init(void)
 		strcpy(RGBLed_dev1->name,DEVICE_NAME);
 
 		printk("initializing the timer\n");
-		
-		ktime_on = ktime_set(on_timer_interval_s,0);// timer_interval_ns); //(sec,Nsec)
-		//ktime_off = ktime_set(off_timer_interval_s,0);// timer_interval_ns); //(sec,Nsec)
 		hrtimer_init( &hr_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL );
 		hr_timer.function = &timer_callback;
-
-		printk("END: Timer initialization\n");
-
 
 		printk(KERN_ALERT"RGBLed driver installed by %s\n", __FUNCTION__);
 
 		return 0;
 }
-
 
 void __exit RGBLed_module_exit(void)
 {	
@@ -355,7 +314,6 @@ void __exit RGBLed_module_exit(void)
 
 	printk(KERN_ALERT"RGBLed driver removed.\n");
 }
-
 
 module_init(RGBLed_module_init);
 module_exit(RGBLed_module_exit);
