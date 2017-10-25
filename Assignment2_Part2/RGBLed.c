@@ -10,9 +10,12 @@
 #include <linux/gpio.h>
 #include<linux/delay.h>
 
+#include<linux/jiffies.h>
+#include <linux/hrtimer.h>
+#include <linux/ktime.h>
+
 #define DEVICE_NAME "RGBLed"
 #define CONFIG 1
-#define UNCONFIG 0
 
 MODULE_LICENSE("GPL");              
 MODULE_AUTHOR("Achal Shah & Aditi Sonik");      
@@ -20,9 +23,14 @@ MODULE_DESCRIPTION("LKM of RGB Led");
 
 //Globals
 
-static dev_t dev_num;							//For allocating device number
-struct class *RGBLed_class; 					//For allocating class number
-static struct device *RGBLed_device;			//creating object of DEVICE structure
+static dev_t dev_num;																//For allocating device number
+struct class *RGBLed_class; 														//For allocating class number
+static struct device *RGBLed_device;												//creating object of DEVICE structure
+
+unsigned long on_timer_interval_s = 1; //PWM 50%
+//unsigned long off_timer_interval_s = 0.01;
+static struct hrtimer hr_timer;
+ktime_t ktime_on;//, ktime_off;
 
 int R_GPIO, R_LS, R_MUX;
 int G_GPIO, G_LS, G_MUX;
@@ -32,19 +40,65 @@ int GPIO_PIN[] = {11,12,13,14,6,0,1,38,40,4,10,5,15,7};
 int LS_PIN[] = {32,28,34,16,36,18,20,-1,-1,22,26,24,42,30};
 int MUX_PIN[] = {-1,45,77,76,-1,66,68,-1,-1,70,74,44,-1,46};
 
-int LedOFF = 0; // To see LED ON or OFF; 0 = OFF
+int LedOFF = 0; 																	// To see LED ON or OFF; 0 = OFF
+int flag=0;
+int pin_flag[3] = {0,0,0}; 															//To see which pins among RGB are enabled
 
 struct values{
 	int arr[4];
-	//int cmd;
 };
 struct RGBLed_dev {
-	struct cdev cdev;							// The cdev structure 
-	char name[20];		                		// Name of device
-	int pattern;
-	//int array_input[4];
+	struct cdev cdev;															// The cdev structure 
+	char name[20];		                										// Name of device
+	int pattern;																// Type of LED pattern sent to device 
 } *RGBLed_dev1;
 
+//logic taken from https://gist.github.com/maggocnx/5946907#file-timertest-c-L15
+enum hrtimer_restart timer_callback(struct hrtimer *timer_for_restart){              
+  	ktime_t currtime , interval;
+  	//printk(KERN_ALERT"In callback function");
+  	currtime  = ktime_get();
+	interval = ktime_set(on_timer_interval_s,0);//timer_interval_ns); 			//on timer
+	hrtimer_forward(timer_for_restart, currtime , interval);
+
+  	//if(RGBLed_dev1->pattern != 7){
+	  	if(flag == 0){
+	  		/*currtime  = ktime_get();
+		  	interval = ktime_set(on_timer_interval_s,0);//timer_interval_ns); 			//on timer
+		  	hrtimer_forward(timer_for_restart, currtime , interval);*/
+		  		
+		  	if(pin_flag[0] != 0){
+				gpio_set_value(R_GPIO, 1);
+			}
+			if(pin_flag[1] != 0){
+				gpio_set_value(G_GPIO, 1);
+			}
+			if(pin_flag[2] != 0){
+				gpio_set_value(B_GPIO, 1);
+			}
+		  	flag = 1;
+		  	return HRTIMER_RESTART;  
+		  	//printk(KERN_ALERT"Exiting if block");
+	  	}
+	  	else{
+	  		/*currtime  = ktime_get();
+		  	interval = ktime_set(on_timer_interval_s,0);//timer_interval_ns); 			//off timer
+		  	hrtimer_forward(timer_for_restart, currtime , interval);*/
+		  	gpio_set_value(R_GPIO, 0);
+			gpio_set_value(G_GPIO, 0);
+			gpio_set_value(B_GPIO, 0);
+		  	flag = 0;
+		  	return HRTIMER_NORESTART;
+		  	//printk(KERN_ALERT"Exiting else block");
+	  	}
+	  	
+	 	/*return HRTIMER_RESTART;  */
+	 /*}
+	 else{
+	 	return HRTIMER_NORESTART;
+
+	 } */
+}
 
 int RGBLed_open(struct inode *inode, struct file *file)
 {
@@ -53,7 +107,7 @@ int RGBLed_open(struct inode *inode, struct file *file)
 
 	RGBLed_dev1 = container_of(inode->i_cdev, struct RGBLed_dev, cdev);			// Get the per-device structure that contains this cdev 
 
-	file->private_data = RGBLed_dev1;								// Easy access to cmos_devp from rest of the entry points 
+	file->private_data = RGBLed_dev1;											
 
 	printk(KERN_ALERT"\n%s is openning \n", RGBLed_dev1->name);
 	return 0;
@@ -73,58 +127,37 @@ int RGBLed_release(struct inode *inode, struct file *file)
 
 ssize_t RGBLed_write(struct file *file, const char *user_buff, size_t count, loff_t *ppos)
 {
-	int status = 0;
-
-	printk(KERN_ALERT"Writing.......through %s function\n", __FUNCTION__);
+	int status = 0;//,j=0,k=25;
+	//printk(KERN_ALERT"Writing.......through %s function\n", __FUNCTION__);	
 	
 	get_user(RGBLed_dev1->pattern, user_buff);
-	//printk("pattern = %d\n",RGBLed_dev1->pattern);
-	switch(RGBLed_dev1->pattern){
-		// case number represented in sequence {'R','G','B','RG','RB','GB','RGB'}
-		case 1:
-			gpio_set_value(R_GPIO, 1);
-			msleep(10);
-			break;
-		case 2:
-			gpio_set_value(R_GPIO, 1);
-			msleep(10);
-			break;
-		case 4:
-			gpio_set_value(B_GPIO, 1);
-			msleep(10);
-			break;
-		case 3:
-			gpio_set_value(R_GPIO, 1);
-			gpio_set_value(G_GPIO, 1);
-			msleep(10);
-			break;
-		case 5:
-			gpio_set_value(R_GPIO, 1);
-			gpio_set_value(B_GPIO, 1);
-			msleep(10);
-			break;
-		case 6:
-			gpio_set_value(G_GPIO, 1);
-			gpio_set_value(B_GPIO, 1);
-			msleep(10);
-			break;
-		case 7:
-			gpio_set_value(R_GPIO, 1);
-			gpio_set_value(G_GPIO, 1);
-			gpio_set_value(B_GPIO, 1);
-			msleep(10);
-			break;
-		default:
-			gpio_set_value(R_GPIO, 0);
-			gpio_set_value(G_GPIO, 0);
-			gpio_set_value(B_GPIO, 0);
-			break;
 
-	}
-	gpio_set_value(R_GPIO, 0);
-	gpio_set_value(G_GPIO, 0);
-	gpio_set_value(B_GPIO, 0);	
+	//bitwise operation
+	pin_flag[0] = RGBLed_dev1->pattern&4; //R
+	pin_flag[1] = RGBLed_dev1->pattern&2; //G
+	pin_flag[2] = RGBLed_dev1->pattern&1; //B
 
+	//while(j<k){
+		hrtimer_start(&hr_timer, ktime_on, HRTIMER_MODE_REL);
+	//	hrtimer_start(&hr_timer, ktime_off, HRTIMER_MODE_REL);
+		
+	//	j++;
+	//}
+
+	
+	//msleep(50);
+	//if(RGBLed_dev1->pattern == 7){
+		
+	//}
+	//printk(KERN_ALERT"HRtimer started\n");
+	/*while(j<k){	
+		//gpio_set_value(R_GPIO, 1);				
+							
+		//gpio_set_value(R_GPIO, 0);	
+							
+		j++;
+	}*/
+			
 	return status;								
 }
 
@@ -150,8 +183,7 @@ static long RGBLed_ioctl(struct file * file, unsigned int  x, unsigned long args
 	for(i=0;i<4;i++){
 		//for checking floating point values
 		/*if(object->arr[i] != (int)object->arr[i]){
-			break;
-			
+			break;			
 		}*/
 		array[i] = (int)object->arr[i];
 	}
@@ -253,15 +285,16 @@ int __init RGBLed_module_init(void)
 {
 
 	int return1;
+	/*ktime_t ktime;*/
 
 	printk(KERN_ALERT"Installing RGBLed device driver by %s function\n", __FUNCTION__);
 	
-	if (alloc_chrdev_region(&dev_num, 0, 1, DEVICE_NAME)<0){			//Allocating major|minor numbers to char-device of device driver "RGBLed"
+	if (alloc_chrdev_region(&dev_num, 0, 1, DEVICE_NAME)<0){				//Allocating major|minor numbers to char-device of device driver "RGBLed"
 		printk(KERN_ALERT "Device not registered\n");
 		return -1;
 	}
 
-		RGBLed_class = class_create(THIS_MODULE, "Led");			//Populate sysfs entries; Adding class to our device 
+		RGBLed_class = class_create(THIS_MODULE, "Led");					//Populate sysfs entries; Adding class to our device 
 		
 		RGBLed_dev1 = kmalloc(sizeof(struct RGBLed_dev), GFP_KERNEL);		//Allocating memory to RGBLed_dev1
 		if (!RGBLed_dev1) {
@@ -269,10 +302,10 @@ int __init RGBLed_module_init(void)
 		}
 
 
-		cdev_init(&RGBLed_dev1->cdev, &RGBLed_fops);				//Perform device initialization by connecting the file operations with the cdev 
+		cdev_init(&RGBLed_dev1->cdev, &RGBLed_fops);						//Perform device initialization by connecting the file operations with the cdev 
 		RGBLed_dev1->cdev.owner = THIS_MODULE;
 
-		return1 = cdev_add(&RGBLed_dev1->cdev, (dev_num), 1);			// Add the major/minor number of device 1 to the cdev's List 
+		return1 = cdev_add(&RGBLed_dev1->cdev, (dev_num), 1);				// Add the major/minor number of device 1 to the cdev's List 
 		if (return1 < 0) {
 			printk(KERN_ALERT"Bad cdev_add\n");
 			return return1;
@@ -281,7 +314,17 @@ int __init RGBLed_module_init(void)
 		RGBLed_device = device_create(RGBLed_class, NULL, MKDEV(MAJOR(dev_num), 0), NULL, DEVICE_NAME);
 
 		strcpy(RGBLed_dev1->name,DEVICE_NAME);
+
+		printk("initializing the timer\n");
 		
+		ktime_on = ktime_set(on_timer_interval_s,0);// timer_interval_ns); //(sec,Nsec)
+		//ktime_off = ktime_set(off_timer_interval_s,0);// timer_interval_ns); //(sec,Nsec)
+		hrtimer_init( &hr_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL );
+		hr_timer.function = &timer_callback;
+
+		printk("END: Timer initialization\n");
+
+
 		printk(KERN_ALERT"RGBLed driver installed by %s\n", __FUNCTION__);
 
 		return 0;
@@ -290,7 +333,8 @@ int __init RGBLed_module_init(void)
 
 void __exit RGBLed_module_exit(void)
 {	
-	
+	int ret;
+
 	printk(KERN_ALERT"Uninstalling RGBLed device driver by %s function\n", __FUNCTION__);
 
 	/* Release the major number */
@@ -304,6 +348,10 @@ void __exit RGBLed_module_exit(void)
 	kfree(RGBLed_dev1);
 
 	class_destroy(RGBLed_class);
+
+	printk("HR Timer module uninstalling\n");
+	ret = hrtimer_cancel( &hr_timer );
+  	if (ret) printk("The timer was still in use...\n");
 
 	printk(KERN_ALERT"RGBLed driver removed.\n");
 }

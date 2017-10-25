@@ -8,10 +8,10 @@
 #include<malloc.h>
 #include<pthread.h>
 #include<linux/input.h>
+#include<time.h>
 
 #define EVENT_FILE_NAME "/dev/input/event2"
 #define CONFIG 1
-#define UNCONFIG 0
 
 int terminate=0;
 pthread_t  thread_id;
@@ -45,31 +45,19 @@ return NULL;
 
 int main(){
 
-	int fd = 0,return_value,i;
+	int fd = 0,return_value,i,thread_status = 0;
 	struct values *object;
-	//int y = 3;
-	int thread_status = 0;
+	struct timespec req,rem;
+	req.tv_sec = 5;
+	req.tv_nsec = 0;
 	int arr_pattern[7] = {1,2,4,3,5,6,7}; //{'R','G','B','RG','RB','GB','RGB'}
-	/*
-
-	  color	  LS_bit  case
-	   _#_	   _BGR_   _#_
-		R 		001		1
-		G 		010		2
-		B 		100		4
-		RG 		011		3
-		RB 		101		5
-		GB 		110		6
-		RGB 	111		7
-
-	*/
+	
 	object = (struct values *)malloc(sizeof(struct values));
 	printf("Enter Integer input values in order [ percentage of PWM, R_IO, G_IO, B_IO ]\n");
 	
 	for(i=0;i<4;i++){
 		scanf("%d",&(object->arr[i]));		
 	}
-
 		
 	fd = open("/dev/RGBLed", O_RDWR);						
 	if (fd < 0 ){
@@ -90,23 +78,30 @@ int main(){
 			thread_status = pthread_create( &thread_id, NULL, &mouse_click, NULL);
 			if(thread_status != 0){
 				printf("thread create error status");
-			}	
-			while(1){
-				//When PWM is not equal to 0
-				if(object->arr[0] != 0){
-					for(i=0;i<7;i++){
-						write(fd,&arr_pattern[i],sizeof(arr_pattern[i]));
+			}
+			else{	
+				while(1){
+					if(terminate == 1){
+						break;
 					}
-				}
-				// When PWM is 0
-				else {
-					write(fd,"0",sizeof(int));	
-				}
+					//When PWM is not equal to 0
+					if(object->arr[0] != 0){
+						for(i=0;i<7;i++){
+							//printf("new pattern\n");
+							write(fd,&arr_pattern[i],sizeof(arr_pattern[i]));
+							nanosleep(&req, &rem);
+							//Check for termination
+							if(terminate == 1){
+								break;
+							}	
+						}
+					}
+					// When PWM is 0
+					else {
+						write(fd,"0",sizeof(int));	
+					}	
 
-				//Check for termination
-				if(terminate == 1){
-					break;
-				}					
+				}
 			}
 		}
 		
