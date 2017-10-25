@@ -11,13 +11,13 @@ read R_IO
 read G_IO
 read B_IO
 
-cycle_duration=20   #Value in milliseconds
-step_duration=5/10   #Value in seconds
-#k=$step_duration*/$cycle_duration/1000
-#pwm_on=$cycle_duration*1000*$pwm/100 
-#pwm_off=$cycle_duration*1000-$pwm_on
-pwm_on=200*$pwm
-pwm_off=20000-$pwm_on
+#cycle_duration=20   #Value in milliseconds
+#step_duration=0.5   #Value in seconds
+#k=$(( $step_duration/((cycle_duration)*0.001) ))
+#pwm_on=$(( $(cycle_duration*1000*$pwm)/100 ))
+#pwm_off=$(( $(cycle_duration*1000)-$pwm_on ))
+pwm_on=$(( 200*$pwm ))
+pwm_off=$(( 20000-$pwm_on ))
 
 ledR=${GPIO_PIN[$R_IO]}
 l_shifR=${LS_PIN[$R_IO]}
@@ -31,157 +31,169 @@ ledB=${GPIO_PIN[$B_IO]}
 l_shifB=${LS_PIN[$B_IO]}
 muxB=${MUX_PIN[$B_IO]}
 
-#------------------------LED-------------------------
-echo -n $ledR >> /sys/class/gpio/export
-echo -n "out" > /sys/class/gpio/gpio$ledR/direction
-
-echo -n $ledG >> /sys/class/gpio/export
-echo -n "out" > /sys/class/gpio/gpio$ledG/direction
-
-echo -n $ledB >> /sys/class/gpio/export
-echo -n "out" > /sys/class/gpio/gpio$ledB/direction
-
-#------------------LEVEL SHIFTER----------------------
-if [ $l_shifR -gt 0 ]
+if (( pwm > 0 && pwm <= 100 )) && (( R_IO >= 0 && R_IO <= 13 )) && (( G_IO >= 0 && G_IO <= 13 )) && (( B_IO >= 0 && B_IO <= 13 ))
 then
-echo -n $l_shifR >> /sys/class/gpio/export
-echo -n "out" > /sys/class/gpio/gpio$l_shifR/direction
-echo -n "0" > /sys/class/gpio/gpio$l_shifR/value
-fi
 
-if [ $l_shifG -gt 0 ]
-then
-echo -n $l_shifG >> /sys/class/gpio/export
-echo -n "out" > /sys/class/gpio/gpio$l_shifG/direction
-echo -n "0" > /sys/class/gpio/gpio$l_shifG/value
-fi
+	#------------------------LED-------------------------
+	echo -n $ledR >> /sys/class/gpio/export
+	echo -n "out" > /sys/class/gpio/gpio$ledR/direction
 
-if [ $l_shifB -gt 0 ]
-then
-echo -n $l_shifB >> /sys/class/gpio/export
-echo -n "out" > /sys/class/gpio/gpio$l_shifB/direction
-echo -n "0" > /sys/class/gpio/gpio$l_shifB/value
-fi
+	echo -n $ledG >> /sys/class/gpio/export
+	echo -n "out" > /sys/class/gpio/gpio$ledG/direction
 
-#--------------------MUX------------------------
-if [ $muxR -gt 0 ]
-then
-echo -n $muxR >> /sys/class/gpio/export
-echo -n "out" > /sys/class/gpio/gpio$muxR/direction
-echo -n "0" > /sys/class/gpio/gpio$muxR/value
-fi
+	echo -n $ledB >> /sys/class/gpio/export
+	echo -n "out" > /sys/class/gpio/gpio$ledB/direction
 
-if [ $muxG -gt 0 ]
-then
-echo -n $muxG >> /sys/class/gpio/export
-echo -n "out" > /sys/class/gpio/gpio$muxG/direction
-echo -n "0" > /sys/class/gpio/gpio$muxG/value
-fi
+	#------------------LEVEL SHIFTER----------------------
+	if [ $l_shifR -gt 0 ]
+	then
+	echo -n $l_shifR >> /sys/class/gpio/export
+	echo -n "out" > /sys/class/gpio/gpio$l_shifR/direction
+	echo -n "0" > /sys/class/gpio/gpio$l_shifR/value
+	fi
 
-if [ $muxB -gt 0 ]
-then
-echo -n $muxB >> /sys/class/gpio/export
-echo -n "out" > /sys/class/gpio/gpio$muxB/direction
-echo -n "0" > /sys/class/gpio/gpio$muxB/value
-fi
+	if [ $l_shifG -gt 0 ]
+	then
+	echo -n $l_shifG >> /sys/class/gpio/export
+	echo -n "out" > /sys/class/gpio/gpio$l_shifG/direction
+	echo -n "0" > /sys/class/gpio/gpio$l_shifG/value
+	fi
+
+	if [ $l_shifB -gt 0 ]
+	then
+	echo -n $l_shifB >> /sys/class/gpio/export
+	echo -n "out" > /sys/class/gpio/gpio$l_shifB/direction
+	echo -n "0" > /sys/class/gpio/gpio$l_shifB/value
+	fi
+
+	#--------------------MUX------------------------
+	if [ $muxR -gt 0 ]
+	then
+	echo -n $muxR >> /sys/class/gpio/export
+	echo -n "out" > /sys/class/gpio/gpio$muxR/direction
+	echo -n "0" > /sys/class/gpio/gpio$muxR/value
+	fi
+
+	if [ $muxG -gt 0 ]
+	then
+	echo -n $muxG >> /sys/class/gpio/export
+	echo -n "out" > /sys/class/gpio/gpio$muxG/direction
+	echo -n "0" > /sys/class/gpio/gpio$muxG/value
+	fi
+
+	if [ $muxB -gt 0 ]
+	then
+	echo -n $muxB >> /sys/class/gpio/export
+	echo -n "out" > /sys/class/gpio/gpio$muxB/direction
+	echo -n "0" > /sys/class/gpio/gpio$muxB/value
+	fi
 
 #-------------------BLINKING------------------------
-for i in {1..25}
-do
-	echo -n "1" > /sys/class/gpio/gpio$ledR/value
-	usleep $pwm_on
-	echo -n "0" > /sys/class/gpio/gpio$ledR/value
-	usleep $pwm_off
-done
-
-for i in {1..25}
-do
-	echo -n "1" > /sys/class/gpio/gpio$ledG/value
-	usleep $pwm_on
-	echo -n "0" > /sys/class/gpio/gpio$ledG/value
-	usleep $pwm_off
-done
-
-for i in {1..25}
-do
-	echo -n "1" > /sys/class/gpio/gpio$ledB/value
-	usleep $pwm_on
-	echo -n "0" > /sys/class/gpio/gpio$ledB/value
-	usleep $pwm_off
-done
-
-for i in {1..25}
-do
-	echo -n "1" > /sys/class/gpio/gpio$ledR/value
-	echo -n "1" > /sys/class/gpio/gpio$ledG/value
-	usleep $pwm_on
-	echo -n "0" > /sys/class/gpio/gpio$ledR/value
-	echo -n "0" > /sys/class/gpio/gpio$ledG/value
-	usleep $pwm_off
-done
-
-for i in {1..25}
-do
-	echo -n "1" > /sys/class/gpio/gpio$ledR/value
-	echo -n "1" > /sys/class/gpio/gpio$ledB/value
-	usleep $pwm_on
-	echo -n "0" > /sys/class/gpio/gpio$ledR/value
-	echo -n "0" > /sys/class/gpio/gpio$ledB/value
-	usleep $pwm_off
-done
-
-for i in {1..25}
-do
-	echo -n "1" > /sys/class/gpio/gpio$ledG/value
-	echo -n "1" > /sys/class/gpio/gpio$ledB/value
-	usleep $pwm_on
-	echo -n "0" > /sys/class/gpio/gpio$ledG/value
-	echo -n "0" > /sys/class/gpio/gpio$ledB/value
-	usleep $pwm_off
-done
-
-for i in {1..25}
-do
-	echo -n "1" > /sys/class/gpio/gpio$ledR/value
-	echo -n "1" > /sys/class/gpio/gpio$ledG/value
-	echo -n "1" > /sys/class/gpio/gpio$ledB/value
-	usleep $pwm_on
-	echo -n "0" > /sys/class/gpio/gpio$ledR/value
-	echo -n "0" > /sys/class/gpio/gpio$ledG/value
-	echo -n "0" > /sys/class/gpio/gpio$ledB/value
-	usleep $pwm_off
-done
 
 
-#----------------UNEXPORT---------------------
-echo -n $ledR >> /sys/class/gpio/unexport
-if [ $l_shifR -gt 0 ]
-then
-echo -n $l_shifR >> /sys/class/gpio/unexport
-fi
-if [ $muxR -gt 0 ]
-then
-echo -n $muxR >> /sys/class/gpio/unexport
-fi
+	for i in {1..25}
+	do
+		echo -n "1" > /sys/class/gpio/gpio$ledR/value
+		usleep $pwm_on
+		echo -n "0" > /sys/class/gpio/gpio$ledR/value
+		usleep $pwm_off
+	done
 
-echo -n $ledG >> /sys/class/gpio/unexport
-if [ $l_shifG -gt 0 ]
-then
-echo -n $l_shifG >> /sys/class/gpio/unexport
-fi
-if [ $muxG -gt 0 ]
-then
-echo -n $muxG >> /sys/class/gpio/unexport
-fi
+	for i in {1..25}
+	do
+		echo -n "1" > /sys/class/gpio/gpio$ledG/value
+		usleep $pwm_on
+		echo -n "0" > /sys/class/gpio/gpio$ledG/value
+		usleep $pwm_off
+	done
 
-echo -n $ledB >> /sys/class/gpio/unexport
-if [ $l_shifB -gt 0 ]
-then
-echo -n $l_shifB >> /sys/class/gpio/unexport
-fi
-if [ $muxB -gt 0 ]
-then
-echo -n $muxB >> /sys/class/gpio/unexport
+	for i in {1..25}
+	do
+		echo -n "1" > /sys/class/gpio/gpio$ledB/value
+		usleep $pwm_on
+		echo -n "0" > /sys/class/gpio/gpio$ledB/value
+		usleep $pwm_off
+	done
+
+	for i in {1..25}
+	do
+		echo -n "1" > /sys/class/gpio/gpio$ledR/value
+		echo -n "1" > /sys/class/gpio/gpio$ledG/value
+		usleep $pwm_on
+		echo -n "0" > /sys/class/gpio/gpio$ledR/value
+		echo -n "0" > /sys/class/gpio/gpio$ledG/value
+		usleep $pwm_off
+	done
+
+	for i in {1..25}
+	do
+		echo -n "1" > /sys/class/gpio/gpio$ledR/value
+		echo -n "1" > /sys/class/gpio/gpio$ledB/value
+		usleep $pwm_on
+		echo -n "0" > /sys/class/gpio/gpio$ledR/value
+		echo -n "0" > /sys/class/gpio/gpio$ledB/value
+		usleep $pwm_off
+	done
+
+	for i in {1..25}
+	do
+		echo -n "1" > /sys/class/gpio/gpio$ledG/value
+		echo -n "1" > /sys/class/gpio/gpio$ledB/value
+		usleep $pwm_on
+		echo -n "0" > /sys/class/gpio/gpio$ledG/value
+		echo -n "0" > /sys/class/gpio/gpio$ledB/value
+		usleep $pwm_off
+	done
+
+	for i in {1..25}
+	do
+		echo -n "1" > /sys/class/gpio/gpio$ledR/value
+		echo -n "1" > /sys/class/gpio/gpio$ledG/value
+		echo -n "1" > /sys/class/gpio/gpio$ledB/value
+		usleep $pwm_on
+		echo -n "0" > /sys/class/gpio/gpio$ledR/value
+		echo -n "0" > /sys/class/gpio/gpio$ledG/value
+		echo -n "0" > /sys/class/gpio/gpio$ledB/value
+		usleep $pwm_off
+	done
+#else
+#	echo -e "Invalid inputs: Enter Valid Inputs"
+#fi
+
+
+
+	#----------------UNEXPORT---------------------
+	echo -n $ledR >> /sys/class/gpio/unexport
+	if [ $l_shifR -gt 0 ]
+	then
+	echo -n $l_shifR >> /sys/class/gpio/unexport
+	fi
+	if [ $muxR -gt 0 ]
+	then
+	echo -n $muxR >> /sys/class/gpio/unexport
+	fi
+
+	echo -n $ledG >> /sys/class/gpio/unexport
+	if [ $l_shifG -gt 0 ]
+	then
+	echo -n $l_shifG >> /sys/class/gpio/unexport
+	fi
+	if [ $muxG -gt 0 ]
+	then
+	echo -n $muxG >> /sys/class/gpio/unexport
+	fi
+
+	echo -n $ledB >> /sys/class/gpio/unexport
+	if [ $l_shifB -gt 0 ]
+	then
+	echo -n $l_shifB >> /sys/class/gpio/unexport
+	fi
+	if [ $muxB -gt 0 ]
+	then
+	echo -n $muxB >> /sys/class/gpio/unexport
+	fi
+else
+	echo -e "Invalid inputs: Enter Valid Inputs"
 fi
 
 
