@@ -35,7 +35,6 @@ void *mouse_click(){
 		if( (event.code == 272 && event.value == 1 ) || (event.code == 273 && event.value == 1) ){
 			printf("Click event detected\n");
 			terminate = 1;
-			//break;
 		}
 	}
 
@@ -44,7 +43,7 @@ return NULL;
 
 int main(){
 
-	int fd = 0,return_value,i,thread_status = 0,k = 25;
+	int fd = 0,return_value,i,thread_status = 0;
 	struct values *object;
 	struct timespec req,rem;
 	req.tv_sec = 0;
@@ -85,15 +84,6 @@ int main(){
 					if(object->arr[0] != 0){
 
 						for(i=0;i<7;i++){
-
-							//for(i=0;i<k;i++){
-
-							/*clock_gettime(CLOCK_MONOTONIC, &req);
-
-							while(1){
-								if( (req.tv_nsec - rem.tv_nsec) > (1000000000/2) ){
-									break;
-								}*/
 								write(fd,&arr_pattern[i],sizeof(arr_pattern[i]));
 								nanosleep(&req, &rem);
 							//Check for termination

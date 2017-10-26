@@ -36,12 +36,12 @@ int R_GPIO, R_LS, R_MUX;
 int G_GPIO, G_LS, G_MUX;
 int B_GPIO, B_LS, B_MUX;
 
-int GPIO_PIN[] = {11,12,13,14,6,0,1,38,40,4,10,5,15,7};
-int LS_PIN[] = {32,28,34,16,36,18,20,-1,-1,22,26,24,42,30};
-int MUX_PIN[] = {-1,45,77,76,-1,66,68,-1,-1,70,74,44,-1,46};
+int GPIO_PIN[] = {11,12,13,14,6,0,1,38,40,4,10,5,15,7};								//PIO PIN# array
+int LS_PIN[] = {32,28,34,16,36,18,20,-1,-1,22,26,24,42,30};							//Level Shifter PIN# array
+int MUX_PIN[] = {-1,45,77,76,-1,66,68,-1,-1,70,74,44,-1,46};						//Mux pin# array	
 
 int LedOFF = 0; 																	// To see LED ON or OFF; 0 = OFF
-int flag=0;
+int flag=0;																			// To keep track if led needs to be on or of in a particular timer interval
 int pin_flag[3] = {0,0,0}; 															//To see which pins among RGB are enabled
 
 struct values{
@@ -56,7 +56,7 @@ struct RGBLed_dev {
 //logic taken from https://gist.github.com/maggocnx/5946907#file-timertest-c-L15
 enum hrtimer_restart timer_callback(struct hrtimer *timer_for_restart){              
   	ktime_t currtime , interval;
-
+  		//To switch LED on
 	  	if(flag == 0){
 	  			  				  		
 		  	if(pin_flag[0] != 0 && pin_flag[1] == 0 && pin_flag[2] == 0){ //case 1: R
@@ -89,8 +89,9 @@ enum hrtimer_restart timer_callback(struct hrtimer *timer_for_restart){
 		  	currtime  = ktime_get();
 			interval = ktime_set(0,on_timer_interval_ns);						//on timer
 			hrtimer_forward(timer_for_restart, currtime , interval);
-		  	//return HRTIMER_RESTART;  
+		  	 
 	  	}
+	  	//To switch LED off
 	  	else{
 	  		
 	  		gpio_set_value(R_GPIO, 0);
@@ -101,7 +102,7 @@ enum hrtimer_restart timer_callback(struct hrtimer *timer_for_restart){
 	  		off_timer_interval_ns = ((cycle_duration * 1000000) - on_timer_interval_ns);
 			interval = ktime_set(0,off_timer_interval_ns);						//off timer 
 			hrtimer_forward(timer_for_restart, currtime , interval);
-		  	//return HRTIMER_RESTART;
+		  	
 	  	}
 	  	return HRTIMER_RESTART;
 	  	
@@ -127,6 +128,16 @@ int RGBLed_release(struct inode *inode, struct file *file)
 
 	printk(KERN_ALERT"Closing.......through %s function\n", __FUNCTION__);
 
+	//resetting gpio pins
+	gpio_set_value(R_GPIO, 0);
+	gpio_set_value(G_GPIO, 0);
+	gpio_set_value(B_GPIO, 0);
+	
+	//releasing GPIO pins
+	gpio_free(R_GPIO);
+	gpio_free(G_GPIO);
+	gpio_free(B_GPIO);
+
 	printk(KERN_ALERT"\n%s is closing\n", RGBLed_dev1->name);
 	
 	return 0;
@@ -136,8 +147,8 @@ ssize_t RGBLed_write(struct file *file, const char *user_buff, size_t count, lof
 {
 	int status = 0;
 	
-	get_user(RGBLed_dev1->pattern, user_buff);
-	//bitwise operation
+	get_user(RGBLed_dev1->pattern, user_buff);										//copy data from user memory to kernel memory
+	//bitwise operation to check which pin is to be enabled
 	pin_flag[0] = RGBLed_dev1->pattern&1; //R
 	pin_flag[1] = RGBLed_dev1->pattern&2; //G
 	pin_flag[2] = RGBLed_dev1->pattern&4; //B
@@ -161,23 +172,19 @@ static long RGBLed_ioctl(struct file * file, unsigned int  x, unsigned long args
 	object->arr[2] = -9;
 	object->arr[3] = -9;
 
-	status = copy_from_user(object,(struct values*)args,sizeof(struct values));
+	status = copy_from_user(object,(struct values*)args,sizeof(struct values));			//copy data from user memory to kernel memory
 	if(status > 0){
 		printk("failure copy_from_user \n");
 	}	
 
-	//Check valid inputs or not
 	for(i=0;i<4;i++){
-		//for checking floating point values
-		/*if(object->arr[i] != (int)object->arr[i]){
-			break;			
-		}*/
 		array[i] = (int)object->arr[i];
 	}
 
 	on_timer_interval_ns = cycle_duration * array[0] * 10000; // in nano-sec
 	ktime_on = ktime_set(0,on_timer_interval_ns); //(sec,Nsec)	
 	
+	//Check valid inputs or not
 	if( (array[0] < 101 && array[0] >= 0) && array[1] != -9 && array[2] != -9 && array[3] != -9 && 
 		(array[1] < 14 && array[1] >= 0 ) && (array[2] < 14 && array[2] >= 0 ) && (array[3] < 14 && array[3] >= 0 ) && 
 		(array[1] != array[2]) && (array[2] != array[3]) && (array[1] != array[3] ) && 
@@ -203,17 +210,18 @@ static long RGBLed_ioctl(struct file * file, unsigned int  x, unsigned long args
 				B_MUX = MUX_PIN[array[3]];
 
 				//GPIO PINS------------------//
+			
 				status =  gpio_direction_output(R_GPIO, LedOFF);   		// Set the gpio to be in output mode and turn off											
 				status =  gpio_direction_output(G_GPIO, LedOFF);
 				status =  gpio_direction_output(B_GPIO, LedOFF);
 				
 				//LS PINS--------------------//
-				if(R_LS != -1){
+				if(R_LS != -1){					
 					status =  gpio_direction_output(R_LS, LedOFF);
 					gpio_set_value_cansleep(R_LS, 0);
 				}
 
-				if(G_LS != -1){
+				if(G_LS != -1){					
 					status =  gpio_direction_output(G_LS, LedOFF);
 					gpio_set_value_cansleep(G_LS, 0);
 				}
@@ -300,6 +308,7 @@ int __init RGBLed_module_init(void)
 
 		strcpy(RGBLed_dev1->name,DEVICE_NAME);
 
+		//initializing timer
 		printk("initializing the timer\n");
 		hrtimer_init( &hr_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL );
 		hr_timer.function = &timer_callback;
@@ -336,7 +345,6 @@ void __exit RGBLed_module_exit(void)
 
 module_init(RGBLed_module_init);
 module_exit(RGBLed_module_exit);
-
 
 
 
