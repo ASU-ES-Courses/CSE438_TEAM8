@@ -109,20 +109,19 @@ void *distance(){
 	int i,val_status,fd,fd1,ret1,ret2;
 	unsigned long long rise,fall;
 	double dis;
-	//char c;
+	char c;
 	fd = open("/sys/class/gpio/gpio14/edge", O_WRONLY);
 	fd1 = open("/sys/class/gpio/gpio14/value", O_RDONLY);
 	struct pollfd poll_struct;
-	poll_struct.fd = fd1;
-
-	poll_struct.events = POLLPRI | POLLERR;
-
-for (i = 0; i < 7; i++)
+	
+	//poll_struct.events = POLLPRI;
+while(1)
+//for (i = 0; i < 7; i++)
 {
 
 	write(fd,"rising",6);
-	close(fd1);
-	fd1 = open("/sys/class/gpio/gpio14/value", O_RDONLY);
+	// close(fd1);
+	// fd1 = open("/sys/class/gpio/gpio14/value", O_RDONLY);
 	//Triggering Pulse
 	val_status = gpio_set_value(13, 1);
 	if (val_status < 0){
@@ -134,38 +133,54 @@ for (i = 0; i < 7; i++)
 		printf("\n trigger pulse 0 unsuccessful\n");
 	}
 
+	poll_struct.fd = fd1;
+	poll_struct.events = POLLPRI;
+	poll_struct.revents = 0;
 	ret1 = poll(&poll_struct, 1, timeout);
 	
-	if (ret1 > 0){
-		if (poll_struct.revents & POLLPRI)
-		{
-		//	printf("revents = %d\n", poll_struct.revents);
-			rise = rdtsc();
-		}
+	if(ret1<0){
+		printf("error pollreturn\n" );
+
 	}
+//	if (ret1 > 0){
+	if (poll_struct.revents & POLLPRI)
+	{
+	//	printf("revents = %d\n", poll_struct.revents);
+		rise = rdtsc();
+		read(fd1,&c,1);
+
+//		}
+//	}
 
 	write(fd,"falling",7);
-	close(fd1);
-	fd1 = open("/sys/class/gpio/gpio14/value", O_RDONLY);
+	// close(fd1);
+	// fd1 = open("/sys/class/gpio/gpio14/value", O_RDONLY);
 //	poll_struct.revents = 0;
+	// poll_struct.revents = 0;
 	ret2 = poll(&poll_struct, 1, timeout);
-	if (ret2 > 0){
+	if(ret2<0){
+	printf("error pollreturn\n" );
+	}	
+//	if (ret2 > 0){
 		if (poll_struct.revents & POLLPRI)
 		{
 		//	printf("revents = %d\n", poll_struct.revents);		
 			fall = rdtsc();
+			read(fd1,&c,1);
+			dis = ((fall - rise)/400)*0.017;
+			printf("Distance is %f cm\n\n",dis);
 		}
 	}
 		
-	dis = (fall - rise)/400*0.017;
+	
 
-	printf("rise tsc = %llu\n",rise);
+	/*printf("rise tsc = %llu\n",rise);
 	printf("return for rise poll = %d\n",ret1);
 	printf("fall tsc = %llu\n",fall);
 	printf("return for fall poll = %d\n",ret2);
-    printf("Distance is %f cm\n\n",dis);
+ */   
 
-    usleep(1000000);
+    usleep(200000);
 
 }
 
