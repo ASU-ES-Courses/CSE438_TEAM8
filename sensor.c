@@ -1,16 +1,37 @@
-#include <stdio.h>
-#include <unistd.h>
+#include<stdio.h>
+#include<sys/stat.h> 
+#include<fcntl.h>
+#include<unistd.h>
+//#include<sys/ioctl.h>
+#include<pthread.h>
+//#include<linux/spi/spidev.h>
+
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
-#include <fcntl.h>
-#include <pthread.h>
 #include <poll.h>
 
 #include"Gpio_func.h"
 #include"Gpio_func.c"
 
+//Macros
 
+//Globals
+int TRIG_GPIO = 13, TRIG_LS = 34, TRIG_PULLUP = 35, TRIG_MUX = 77;
+int ECHO_GPIO  = 14, ECHO_LS = 16, ECHO_PULLUP = 17, ECHO_MUX = 76;
+
+	/*					GPIO	LS 		PULL_UP		MUX
+	IO2 -> TRIG		| 	13		34(L) 	35(L)		77(L)
+					|	61		-		"			"
+	IO3 -> ECHO 	| 	14		16(H) 	17(L)		76(L)
+					|	62		-		"			"
+	
+	*/
+pthread_t  thread_id[2];
+int timeout = -1;
+
+//rdtsc function definition
+//Reference -> https://www.mcs.anl.gov/~kazutomo/rdtsc.html
 static __inline__ unsigned long long rdtsc(void)
 {
   unsigned hi, lo;
@@ -18,192 +39,294 @@ static __inline__ unsigned long long rdtsc(void)
   return ( (unsigned long long)lo)|( ((unsigned long long)hi)<<32 );
 }
 
+void IOsetup(void){
 
-pthread_t  thread_id;
-int timeout = -1;
-
-void PinSetup(void)
-{
-	int pinexport, dir_status, val_status;
-	//Export 
-	pinexport = gpio_export(13);
-	if(pinexport < 0){
-		printf("export error triger gpio\n");		
-	}
-	//Set Dir 
-	dir_status = gpio_set_dir(13, 1);
-	if (dir_status < 0){
-		printf("\n triger gpio direction set failed\n");
-	}
+	int FdExport, SetDir, SetVal;
 	
+	//---------------GPIO PINS---------------------//
+	FdExport = gpio_export(TRIG_GPIO);
+	if(FdExport < 0){
+		printf("TRIG_GPIO export error\n");		
+	}
+	SetDir = gpio_set_dir(TRIG_GPIO, 1);
+	if (SetDir < 0){
+		printf("\n TRIG_GPIO direction set failed\n");
+	}
+	/*SetVal = gpio_set_value(TRIG_GPIO, 1);
+	if (SetVal < 0){
+		printf("\n TRIG_GPIO Value set failed\n");
+	}*/
 
-	//Export 
-	pinexport = gpio_export(34);
-	if(pinexport < 0){
-		printf("export error triger gpio Level Shifter\n");		
-	}
-	//Set Dir 
-	dir_status = gpio_set_dir(34, 1);
-	if (dir_status < 0){
-		printf("\n triger gpio Level Shifter direction set failed\n");
-	}
-	//Set Val 
-	val_status = gpio_set_value(34, 0);
-	if (val_status < 0){
-		printf("\n triger gpio Value set failed\n");
-	}
-
-	//Export 
-	pinexport = gpio_export(77);
-	if(pinexport < 0){
-		printf("export error triger gpio mux\n");		
-	}
-	//Set Val 
-	val_status = gpio_set_value(77, 0);
-	if (val_status < 0){
-		printf("\n triger gpio mux Value set failed\n");
-	}
-
-	//Export 
-	pinexport = gpio_export(14);
-	if(pinexport < 0){
-		printf("export error echo gpio\n");		
-	}
-	//Set Dir 
-	dir_status = gpio_set_dir(14, 0);
-	if (dir_status < 0){
-		printf("\n echo gpio direction set failed\n");
-	}
-
-
-	//Export 
-	pinexport = gpio_export(16);
-	if(pinexport < 0){
-		printf("export error echo gpio Level Shifter\n");		
-	}
-	//Set Dir 
-	dir_status = gpio_set_dir(16, 1);
-	if (dir_status < 0){
-		printf("\n echo gpio Level Shifter direction set failed\n");
-	}
-	//Set Val 
-	val_status = gpio_set_value(16, 1);
-	if (val_status < 0){
-		printf("\n echo gpio Level Shifter Value set failed\n");
-	}
-
-	//Export 
-	pinexport = gpio_export(76);
-	if(pinexport < 0){
-		printf("export error echo gpio mux\n");		
-	}
-	//Set Val 
-	val_status = gpio_set_value(76, 0);
-	if (val_status < 0){
-		printf("\n echo gpio mux Value set failed\n");
-	}
-}
-
-void *distance(){
-
-	int i,val_status,fd,fd1,ret1,ret2;
-	unsigned long long rise,fall;
-	double dis;
-	char c;
-	fd = open("/sys/class/gpio/gpio14/edge", O_WRONLY);
-	fd1 = open("/sys/class/gpio/gpio14/value", O_RDONLY);
-	struct pollfd poll_struct;
-	
-	//poll_struct.events = POLLPRI;
-while(1)
-//for (i = 0; i < 7; i++)
-{
-
-	write(fd,"rising",6);
-	// close(fd1);
-	// fd1 = open("/sys/class/gpio/gpio14/value", O_RDONLY);
-	//Triggering Pulse
-	val_status = gpio_set_value(13, 1);
-	if (val_status < 0){
-		printf("\n trigger pulse 1 unsuccessful\n");
-	}
-	usleep(15);
-	val_status = gpio_set_value(13, 0);
-	if (val_status < 0){
-		printf("\n trigger pulse 0 unsuccessful\n");
-	}
-
-	poll_struct.fd = fd1;
-	poll_struct.events = POLLPRI;
-	poll_struct.revents = 0;
-	ret1 = poll(&poll_struct, 1, timeout);
-	
-	if(ret1<0){
-		printf("error pollreturn\n" );
-
-	}
-//	if (ret1 > 0){
-	if (poll_struct.revents & POLLPRI)
-	{
-	//	printf("revents = %d\n", poll_struct.revents);
-		rise = rdtsc();
-		read(fd1,&c,1);
-
-//		}
-//	}
-
-	write(fd,"falling",7);
-	// close(fd1);
-	// fd1 = open("/sys/class/gpio/gpio14/value", O_RDONLY);
-//	poll_struct.revents = 0;
-	// poll_struct.revents = 0;
-	ret2 = poll(&poll_struct, 1, timeout);
-	if(ret2<0){
-	printf("error pollreturn\n" );
+	FdExport = gpio_export(ECHO_GPIO);
+	if(FdExport < 0){
+		printf("ECHO_GPIO export error\n");		
 	}	
-//	if (ret2 > 0){
-		if (poll_struct.revents & POLLPRI)
-		{
-		//	printf("revents = %d\n", poll_struct.revents);		
-			fall = rdtsc();
-			read(fd1,&c,1);
-			dis = ((fall - rise)/400)*0.017;
-			printf("Distance is %f cm\n\n",dis);
-		}
+	SetDir = gpio_set_dir(ECHO_GPIO, 0);
+	if (SetDir < 0){
+		printf("\n ECHO_GPIO direction set failed\n");
 	}
-		
-	
+	/*SetVal = gpio_set_value(ECHO_GPIO, 0);
+	if (SetVal < 0){
+		printf("\n ECHO_GPIO Value set failed\n");
+	}*/
 
-	/*printf("rise tsc = %llu\n",rise);
-	printf("return for rise poll = %d\n",ret1);
-	printf("fall tsc = %llu\n",fall);
-	printf("return for fall poll = %d\n",ret2);
- */   
+	//---------------LS PINS-----------------------//
+	FdExport = gpio_export(TRIG_LS);
+	if(FdExport < 0){
+		printf("TRIG_LS export error\n");		
+	}	
+	SetDir = gpio_set_dir(TRIG_LS, 1);
+	if (SetDir < 0){
+		printf("\n TRIG_LS direction set failed\n");
+	}
+	SetVal = gpio_set_value(TRIG_LS, 0);
+	if (SetVal < 0){
+		printf("\n TRIG_LS Value set failed\n");
+	}
 
-    usleep(200000);
+	FdExport = gpio_export(ECHO_LS);
+	if(FdExport < 0){
+		printf("ECHO_LS export error\n");		
+	}	
+	SetDir = gpio_set_dir(ECHO_LS, 1);
+	if (SetDir < 0){
+		printf("\n ECHO_LS direction set failed\n");
+	}
+	SetVal = gpio_set_value(ECHO_LS, 1);
+	if (SetVal < 0){
+		printf("\n ECHO_LS Value set failed\n");
+	}
+
+	//------------PULLUP PINS----------------------//
+
+	FdExport = gpio_export(TRIG_PULLUP);
+	if(FdExport < 0){
+		printf("TRIG_PULLUP export error\n");		
+	}	
+	SetDir = gpio_set_dir(TRIG_PULLUP, 1);
+	if (SetDir < 0){
+		printf("\n TRIG_PULLUP direction set failed\n");
+	}
+	SetVal = gpio_set_value(TRIG_PULLUP, 0);
+	if (SetVal < 0){
+		printf("\n TRIG_PULLUP Value set failed\n");
+	}
+
+	FdExport = gpio_export(ECHO_PULLUP);
+	if(FdExport < 0){
+		printf("ECHO_PULLUP export error\n");		
+	}	
+	SetDir = gpio_set_dir(ECHO_PULLUP, 1);
+	if (SetDir < 0){
+		printf("\n ECHO_PULLUP direction set failed\n");
+	}
+	SetVal = gpio_set_value(ECHO_PULLUP, 0);
+	if (SetVal < 0){
+		printf("\n ECHO_PULLUP Value set failed\n");
+	}
+
+	//--------------MUX PINS-----------------------//
+
+	FdExport = gpio_export(TRIG_MUX);
+	if(FdExport < 0){
+		printf("TRIG_MUX export error\n");		
+	}	
+	/*SetDir = gpio_set_dir(TRIG_MUX, 1);
+	if (SetDir < 0){
+		printf("\n TRIG_MUX direction set failed\n");
+	}*/
+	SetVal = gpio_set_value(TRIG_MUX, 0);
+	if (SetVal < 0){
+		printf("\n TRIG_MUX Value set failed\n");
+	}
+
+	FdExport = gpio_export(ECHO_MUX);
+	if(FdExport < 0){
+		printf("ECHO_MUX export error\n");		
+	}	
+	/*SetDir = gpio_set_dir(ECHO_MUX, 1);
+	if (SetDir < 0){
+		printf("\n ECHO_MUX direction set failed\n");
+	}*/
+	SetVal = gpio_set_value(ECHO_MUX, 0);
+	if (SetVal < 0){
+		printf("\n ECHO_MUX Value set failed\n");
+	}
 
 }
 
-return NULL;
+void IOclose(void){
+	int FdUnExport;
+	
+	//--------------GPIO------------------------//
+	FdUnExport = gpio_unexport(TRIG_GPIO);
+	if(FdUnExport != 0){
+		printf("TRIG_GPIO Pin UnExport error \n");
+	}
+	FdUnExport = gpio_unexport(ECHO_GPIO);
+	if(FdUnExport != 0){
+		printf("ECHO_GPIO Pin UnExport error \n");
+	}
+	//--------------LS-----------------------//
+	FdUnExport = gpio_unexport(TRIG_LS);
+	if(FdUnExport != 0){
+		printf("TRIG_LS Pin UnExport error \n");
+	}
+	FdUnExport = gpio_unexport(ECHO_LS);
+	if(FdUnExport != 0){
+		printf("ECHO_LS Pin UnExport error \n");
+	}
+	//--------------PULLUP---------------------//
+	FdUnExport = gpio_unexport(TRIG_PULLUP);
+	if(FdUnExport != 0){
+		printf("TRIG_PULLUP Pin UnExport error \n");
+	}
+	FdUnExport = gpio_unexport(ECHO_PULLUP);
+	if(FdUnExport != 0){
+		printf("ECHO_PULLUP Pin UnExport error \n");
+	}
+	//--------------MUX------------------------//
+	FdUnExport = gpio_unexport(TRIG_MUX);
+	if(FdUnExport != 0){
+		printf("TRIG_MUX Pin UnExport error \n");
+	}
+	FdUnExport = gpio_unexport(ECHO_MUX);
+	if(FdUnExport != 0){
+		printf("ECHO_MUX Pin UnExport error \n");
+	}
+}
+
+void *DistanceSensor(){
+
+	int fdEchoEdge, fdEchoValue, fdTrigValue;
+	int pollReturn;
+	unsigned long long rise,fall;
+	double distance;
+	int len;
+	char buf[64], c; // 'c' is a dummy variable
+	struct pollfd poll_struct;
+		
+	while(1)
+	{
+		//Opening Trigger pins' VALUE file
+		len = snprintf(buf, sizeof(buf), "/sys/class/gpio/gpio%d/value", TRIG_GPIO);
+		if(len<0){
+			printf("snprintf TRIG_GPIO Value error \n");
+		}		
+		fdTrigValue = open(buf, O_WRONLY);
+
+		//Opening Echo pins' EDGE file
+		len = snprintf(buf, sizeof(buf), "/sys/class/gpio/gpio%d/edge", ECHO_GPIO);
+		if(len<0){
+			printf("snprintf ECHO_GPIO Edge error \n");
+		}		
+		fdEchoEdge = open(buf, O_WRONLY);
+
+		//Opening Echo pins' VALUE file
+		len = snprintf(buf, sizeof(buf), "/sys/class/gpio/gpio%d/value", ECHO_GPIO);
+		if(len<0){
+			printf("snprintf ECHO_GPIO Value error \n");
+		}		
+		fdEchoValue = open(buf, O_RDONLY);
+
+		//Specifying EDGE = "rising" on edge file
+		write(fdEchoEdge,"rising",sizeof("rising"));
+
+		//initializing poll structure
+		poll_struct.fd = fdEchoValue;
+		poll_struct.events = POLLPRI;
+		//poll_struct.revents = 0;
+
+		//Sending Trigger Pulse
+		write(fdTrigValue,"1",sizeof("1"));		
+		usleep(15);
+		write(fdTrigValue,"0",sizeof("0"));
+		
+		//reading dummy value from file to clear it
+		read(fdEchoValue,&c,1);
+		pollReturn = poll(&poll_struct, 1, timeout);		
+		if(pollReturn < 0){
+			printf("error pollReturn\n" );
+		}
+	
+		if (poll_struct.revents & POLLPRI)
+		{			
+			rise = rdtsc();
+			//Rising Edge detected
+
+			write(fdEchoEdge,"falling",sizeof("falling"));
+			poll_struct.revents = 0;
+
+			//reading dummy value from file to clear it
+			read(fdEchoValue,&c,1);
+			pollReturn = poll(&poll_struct, 1, timeout);
+			if(pollReturn < 0){
+				printf("error pollReturn\n" );
+			}
+
+			if (poll_struct.revents & POLLPRI)
+				{						
+					fall = rdtsc();
+					//Falling Edge detected					
+				}
+		}
+		poll_struct.revents = 0;
+		distance = ((fall - rise)/400)*0.017;
+		printf("\nDistance is %f cm\n",distance);		
+  
+		close(fdTrigValue);
+	    close(fdEchoEdge);
+	    close(fdEchoValue);
+
+	    usleep(200000);
+	    
+	}
+	return NULL;
 }
 
 int main(){
-	int thread_status;
-	
-	PinSetup();
 
+	int i;
+	int thread_return[2];
+	//setting up IO pins
+	IOsetup();
 
-	thread_status = pthread_create(&thread_id, NULL, &distance, NULL);
-		if(thread_status != 0){
-			printf("thread create error status");
+	//Thread for LED Display
+	/*thread_return[0] = pthread_create( &thread_id[0], NULL, &Display, NULL);
+	if(thread_return[0] != 0){
+		printf("Display thread create error");
+	}
+	else
+	printf("Display thread created\n");*/
+
+	//Thread for Distance sensor
+	thread_return[1] = pthread_create( &thread_id[1], NULL, &DistanceSensor, NULL);
+	if(thread_return[1] != 0){
+		printf("Distance Sensor thread create error");
+	}
+	else
+	printf("Distance Sensor thread created\n");
+
+	/*for(i=0;i<2;i++){
+		thread_return[i] = pthread_join(thread_id[i], NULL);
+		if(thread_return[i] != 0){
+			printf("thread join error\n");
 		}
+	}
 
+	thread_return[0] = pthread_join(thread_id[0], NULL);
+	if(thread_return[0] != 0){
+		printf("thread join error\n");
+	}*/
 
-	thread_status = pthread_join(thread_id, NULL);
-			if(thread_status != 0){
-				printf("thread join error status\n ");
-			}
-return 0;
+	thread_return[1] = pthread_join(thread_id[1], NULL);
+	if(thread_return[1] != 0){
+		printf("thread join error\n");
+	}	
 
+	printf("terminating\n");
+	//resetting IO pins
+	IOclose();
+	
+	return 0;
 }
-
