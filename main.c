@@ -381,9 +381,9 @@ void *DistanceSensor(){
 		write(fdTrigValue,"0",sizeof("0"));
 		
 		pollReturn = poll(&poll_struct, 1, timeout);		//Capturing POLL event for 'Rising' Edge
-		if(pollReturn < 0){
+		/*if(pollReturn < 0){
 			printf("error pollReturn\n" );
-		}
+		}*/
 	
 		if (poll_struct.revents & POLLPRI)
 		{			
@@ -540,7 +540,7 @@ void *Display(){
 		pthread_mutex_unlock(&MutexLock);
 
 		if(Direction == 'R'){
-			SleepTime = 5000*(int)PrevDistance;
+			SleepTime = 4000*(int)PrevDistance;
 			if(SleepTime > 1000000){							//If 'SleepTime' computed is greater than sensor sleep time reset it to smaller value
 				SleepTime = 900000;
 			}
@@ -573,7 +573,7 @@ void *Display(){
 			usleep(SleepTime);
 		}
 		else if(Direction == 'L'){
-			SleepTime = 8000*(int)PrevDistance;
+			SleepTime = 7000*(int)PrevDistance;
 			if(SleepTime > 1000000){							//If 'SleepTime' computed is greater than sensor sleep time reset it to smaller value
 				SleepTime = 900000;
 			}
