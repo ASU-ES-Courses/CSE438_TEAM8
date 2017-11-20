@@ -196,63 +196,30 @@ int __init sensor_module_init(void)
 
 		printk(KERN_ALERT"Sensor driver installed by %s\n", __FUNCTION__);
 
-			//-----------------------------GPIO SETUP------------------------------//
+	//-----------------------------GPIO SETUP------------------------------//
 	//----------GPIO PINS------------//
-
-	// gpio_request(13, "sysfs");
-	// gpio_request(14, "sysfs");
-	// gpio_request(34, "sysfs");
-	// gpio_request(16, "sysfs");
-	// gpio_request(17, "sysfs");
-	// gpio_request(77, "sysfs");
-	// gpio_request(76, "sysfs");
-	// gpio_request(64, "sysfs");
-
-	// gpio_direction_output(13,0); 
-	// // gpio_export(TRIG_GPIO, false);
-
-	// gpio_direction_input(14);
-	// // gpio_export(ECHO_GPIO, false);
-
-	// //-----------LS PINS---------------//
-
-	// gpio_direction_output(34,0);
-	// // gpio_export(TRIG_LS, false);
-	// gpio_set_value_cansleep(34, 0);
-
-
-	// gpio_direction_output(16,0);
-	// // gpio_export(ECHO_LS, false);
-	// gpio_set_value_cansleep(16, 1);
-
-	// //---------MUX PINS--------------//
-
-	// // gpio_export(TRIG_MUX, false);
-	// gpio_set_value_cansleep(77, 0);
-
-	// // gpio_export(ECHO_MUX, false);
-	// gpio_set_value_cansleep(76, 0);
-
-	// printk(KERN_ALERT"GPIO Set\n");
 
 	gpio_request(TRIG_GPIO, "label");
 	gpio_request(ECHO_GPIO, "label");
+
+	gpio_direction_output(TRIG_GPIO,0);  
+	gpio_direction_input(ECHO_GPIO);
+
+
+	// //-----------LS PINS---------------//
+
 	gpio_request(TRIG_LS, "label");
 	gpio_request(ECHO_LS, "label");
-	gpio_request(17, "label");
+
+	gpio_direction_output(TRIG_LS,0);
+	gpio_direction_output(ECHO_LS,1);  
+
+
+	// //---------MUX PINS--------------//
+
 	gpio_request(TRIG_MUX, "label");
 	gpio_request(ECHO_MUX, "label");
-	gpio_request(64, "label");
-	
-	gpio_direction_output(TRIG_GPIO,0);   // Set the gpio to be in output mode and on
-	gpio_direction_input(ECHO_GPIO);
-	gpio_direction_output(TRIG_LS,0);
-	gpio_direction_output(ECHO_LS,1);   // Set the gpio to be in output mode and on
-	gpio_direction_output(17,0);
-	gpio_direction_output(37,0);
-	// gpio_direction_output(TRIG_MUX,0);   // Set the gpio to be in output mode and on
-	// gpio_direction_output(76,0);
-	// gpio_direction_output(64,0);
+
 
 	//------------IRQ SETUP-------------//	
 
@@ -269,7 +236,7 @@ int __init sensor_module_init(void)
 	fall = 0;
 	rise = 0;
 
-	status = request_irq(irq1, sensor_interrupt_handler, IRQF_TRIGGER_RISING,"sensor_interrupt_handler", sensor_dev1);
+	status = request_irq(irq1, (irq_handler_t)sensor_interrupt_handler, IRQF_TRIGGER_RISING,"sensor_interrupt_handler", sensor_dev1);
 	if(status != 0){
 		printk(KERN_ALERT"Request IRQ fail");
 	}
@@ -305,10 +272,10 @@ void __exit sensor_module_exit(void)
 	gpio_free(ECHO_GPIO);
 	gpio_free(TRIG_LS);
 	gpio_free(ECHO_LS);
-	gpio_free(17);
+
 	gpio_free(TRIG_MUX);
 	gpio_free(ECHO_MUX);
-	gpio_free(64);
+
 	 
 	printk(KERN_ALERT"Sensor driver removed.\n");
 }
