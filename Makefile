@@ -1,19 +1,34 @@
-IOT_HOME = /opt/iot-devkit/1.7.2/sysroots
 
-PATH := $(PATH):$(IOT_HOME)/x86_64-pokysdk-linux/usr/bin/i586-poky-linux
 
-CC = i586-poky-linux-gcc
-ARCH = x86
-CROSS_COMPILE = i586-poky-linux-
-SROOT=$(IOT_HOME)/i586-poky-linux/
+APP = main
 
-APP4 = main
+obj-m:= sensor1.o LedDisplay.o
 
-all:
+ARCH=x86
 
-	$(CC) -o $(APP4) -Wall -pthread --sysroot=$(SROOT) main.c 
+CC=/opt/iot-devkit/1.7.2/sysroots/x86_64-pokysdk-linux/usr/bin/i586-poky-linux/i586-poky-linux-gcc
 
+CROSS_COMPILE=/opt/iot-devkit/1.7.2/sysroots/x86_64-pokysdk-linux/usr/bin/i586-poky-linux/i586-poky-linux-
+
+SROOT=/opt/iot-devkit/1.7.2/sysroots/i586-poky-linux
+
+	MAKE = make ARCH=$(ARCH) CROSS_COMPILE=$(CROSS_COMPILE)
+	KDIR = $(SROOT)/usr/src/kernel/
+
+
+all :
+	$(MAKE) -C $(KDIR) M=$(PWD) modules
+	$(CC) -pthread -Wall -o $(APP) user1.c -lm
 
 clean:
+	rm -f *.ko
 	rm -f *.o
-	rm -f $(APP4) 
+	rm -f Module.symvers
+	rm -f modules.order
+	rm -f *.mod.c
+	rm -rf .tmp_versions
+	rm -f *.mod.c
+	rm -f *.mod.o
+	rm -f \.*.cmd
+	rm -f Module.markers
+	rm -f $(APP) 
