@@ -18,9 +18,9 @@ struct input_event event;
 unsigned long long prev = 0;
  
 pthread_t thread_id[3];
-sig_atomic_t termination_Flag = 0,count=0;
+sig_atomic_t termination_Flag = 0;
 sigset_t set;
-int signal_number;
+int signal_number, count=0;
 
 // void *MouseClick(){
 
