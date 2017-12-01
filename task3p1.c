@@ -18,7 +18,7 @@ struct input_event event;
 unsigned long long prev = 0;
  
 pthread_t thread_id[3];
-int termination_Flag = 0;
+sig_atomic_t termination_Flag = 0,count=0;
 sigset_t set;
 int signal_number;
 
@@ -51,79 +51,27 @@ int signal_number;
 // 	return NULL;
 // }
 
-void *thread1(){
+void *threadfunction(){
 
 	// int status;
-	printf("thread1 waiting for SIGIO\n");
+	printf("threadwith id %lu waiting for SIGIO\n",pthread_self());
 	
-	while(1){
+	while(termination_Flag==0){}
 		// status = sigwait(&set, &signal_number);
 		// sleep(5);
 		// if(status != 0){
 		// 	printf("sigwait failed\n");
 		// }
-		if(termination_Flag==1){	
-			termination_Flag = 0;
+		// if(termination_Flag==1){	
 			// usleep(100);
-			printf("thread1 received the SIGIO signal\n");
-		}
-		else{
-			usleep(100);
-		}
-	}
+			count ++;
+			printf("thread with id %lu received the SIGIO signal\n",pthread_self());
+			termination_Flag = 0;
+		// }
+		// else{
+			// usleep(100);
+		// }
 	// termination_Flag = 1;
-	pthread_exit(NULL);
-}
-
-void *thread2(){
-
-	// int status;
-	printf("thread2 waiting for SIGIO\n");
-	
-	while(1){
-		// status = sigwait(&set, &signal_number);
-		// sleep(5);
-		// if(status != 0){
-		// 	printf("sigwait failed\n");
-		// }
-		if (termination_Flag==1){
-			termination_Flag = 0;
-			// sleep(100);
-			printf("thread2 received the SIGIO signal\n");
-		// termination_Flag = 1;
-		}
-		else{
-			usleep(100);
-		}
-	}
-
-	pthread_exit(NULL);
-
-}
-
-void *thread3(){
-
-	// int status;
-	printf("thread3 waiting for SIGIO\n");
-
-	while(1){
-		// status = sigwait(&set, &signal_number);
-		// sleep(5);
-		// if(status != 0){
-		// 	printf("sigwait failed\n");
-		// }
-		if(termination_Flag==1){
-			termination_Flag = 0;
-			// sleep(100);
-			printf("thread3 received the SIGIO signal\n");
-		}
-		else{
-			usleep(100);
-		}
-		// termination_Flag = 1;
-		
-	}
-
 	pthread_exit(NULL);
 }
 
@@ -131,8 +79,10 @@ void signal_action_handler(int signal_number)
 {
 	// termination_Flag = 1;
 	if(signal_number == SIGIO){
-		termination_Flag = 1;
-		printf("Executing the signal handler\n");
+		if(termination_Flag==0){
+			printf("Executing the signal handler\n");
+			termination_Flag = 1;
+		}
 	}
 }
 
@@ -150,28 +100,28 @@ int main(){
 	sigaddset(&set, SIGIO);
 
 	//Thread1
-	thread_return = pthread_create( &thread_id[0], NULL, &thread1, NULL);
+	thread_return = pthread_create( &thread_id[0], NULL, &threadfunction, NULL);
 	if(thread_return != 0){
 		printf("thread1 create error");
 	}
 	else
-	printf("thread1 created\n");
+	// printf("thread1 created\n");
 
 	//Thread2
-	thread_return = pthread_create( &thread_id[1], NULL, &thread2, NULL);
+	thread_return = pthread_create( &thread_id[1], NULL, &threadfunction, NULL);
 	if(thread_return != 0){
 		printf("thread2 create error");
 	}
 	else
-	printf("thread2 created\n");
+	// printf("thread2 created\n");
 	
 	//Thread3
-	thread_return = pthread_create( &thread_id[2], NULL, &thread3, NULL);
+	thread_return = pthread_create( &thread_id[2], NULL, &threadfunction, NULL);
 	if(thread_return != 0){
 		printf("thread3 create error");
 	}
 	else
-	printf("thread3 created\n");
+	// printf("thread3 created\n");
 
 
 	status = pthread_sigmask(SIG_BLOCK, &set, NULL);	
@@ -179,13 +129,20 @@ int main(){
 		printf("pthread_sigmask error\n");
 	}
 
-	sleep(3);
+	sleep(1);
 
-	while(1){
-		kill(getpid(),SIGIO);
+	while (count < 3){
+		if(termination_Flag==0){
+			kill(getpid(),SIGIO);
+		}
+		else{
+
+			usleep(100);
+
+		}
 	}
 
-	sleep(2);
+	// sleep(2);
 		
 	thread_return = pthread_join(thread_id[0], NULL);
 	if(thread_return != 0){
