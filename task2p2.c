@@ -20,10 +20,8 @@ sem_t sLock;
 void *Thread1(){
 
 
-	printf("Thread1 with thread id %lu  Waiting for semaphore.....\n", pthread_self() );
+	printf("Thread1 with thread id %lu is waiting for semaphore.....\n", pthread_self() );
 	printf("For kernelshark Thread1 id %ld\n",syscall(SYS_gettid) );
-
-	// printf("Waiting for semaphore.....\n");
 
 	sem_wait(&sLock);
 
@@ -53,7 +51,7 @@ void *Thread2(){
 		}
 	}
 
-	printf("Over\n");
+	printf("Kill function called !!\n");
 
 	pthread_kill(thread_id[0], SIGUSR1);
 
