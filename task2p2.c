@@ -20,7 +20,7 @@ sem_t sLock;
 void *Thread1(){
 
 
-	printf("Thread1 with thread id %lu is waiting for semaphore.....\n", pthread_self() );
+	printf("Thread1 with thread id %lu is created \n waiting for semaphore.....\n", pthread_self() );
 	printf("For kernelshark Thread1 id %ld\n",syscall(SYS_gettid) );
 
 	sem_wait(&sLock);
@@ -89,16 +89,16 @@ int main(){
 	if(thread_return != 0){
 		printf("Thread1 thread create error");
 	}
-	else
-	printf("Thread1 thread created\n");
+	// else
+	// printf("Thread1 thread created\n");
 
 	//Thread2 
 	thread_return = pthread_create( &thread_id[1], NULL, &Thread2, NULL);
 	if(thread_return != 0){
 		printf("Thread2 thread create error");
 	}
-	else
-	printf("Thread2 thread created\n");
+	// else
+	// printf("Thread2 thread created\n");
 
 	
 	thread_return = pthread_join(thread_id[0], NULL);
