@@ -21,7 +21,7 @@ pthread_t thread_id[2];
 int termination_Flag = 0;
 
 jmp_buf buff;
-sig_atomic_t count = 0;
+int count = 0, a;
 
 void *MouseClick(){
 
@@ -52,18 +52,25 @@ void *MouseClick(){
 }
 void *Computation(){
 
-	while(count < 1000){
-		// if(termination_Flag == 1){
-		// 	longjmp(buff, 1);
-		// }
+
+	while(count < 10){
 		if(setjmp(buff)==1){
-			printf("Computation Terminated and the count is %d \n", count);
+			printf("Computation Terminated and the imprecise count is %d \n", count);
 			exit(0);
 		}
 		else{
 			count += 1;
-			usleep(10000);
-			// printf("count %d \n", count);
+			for (int i = 0; i < 500; i++){
+
+				for (int j = 0; j < 500; j++)
+				{
+					for (int k = 0; k < 1000; k++)
+					{
+						a += 2;
+						a -= 1;
+					}
+				}
+			}
 		}
 				
 		}	
@@ -89,8 +96,6 @@ int main(){
 		printf("sigaction error occured\n");
 	}
 
-	// pthread_mutex_init(&dist_mutex, NULL);
-
 	//Thread to detect Mouse event click
 	thread_return = pthread_create( &thread_id[0], NULL, &MouseClick, NULL);
 	if(thread_return != 0){
@@ -105,7 +110,7 @@ int main(){
 		printf("Computation thread create error");
 	}
 	else
-	printf("Computation thread created\n");
+	printf("Computation thread created and counting till ten\n \n");
 
 	
 	thread_return = pthread_join(thread_id[0], NULL);
@@ -117,8 +122,6 @@ int main(){
 	if(thread_return != 0){
 		printf("thread join error\n");
 	}	
-	
-	// pthread_mutex_destroy(&dist_mutex);
 
 	return 0;
 }
