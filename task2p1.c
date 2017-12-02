@@ -17,62 +17,31 @@ pthread_attr_t tattr[2];
 struct sched_param param[2];
 int signal_Flag = 0;
 
-// void show_sched(void)
-// {
-// 	struct sched_param sp;
-// 	int policy;
-// 	const char *pstr;
-	
-// 	if (pthread_getschedparam(pthread_self(), &policy, &sp) != 0) {
-// 		perror("pthread_getschedparam failed");
-// 		return;
-// 	}
-
-// 	switch(policy) {
-// 		case SCHED_OTHER:
-// 			pstr = "SCHED_OTHER";
-// 			break;
-// 		case SCHED_FIFO:
-// 			pstr = "SCHED_FIFO";
-// 			break;
-// 		case SCHED_RR:
-// 			pstr = "SCHED_RR";
-// 			break;
-// 		default:
-// 			pstr = "unknown";
-// 	}
-
-// 	printf("thread id = %lu, policy = %s, priority = %d\n",
-// 			pthread_self(), pstr, sp.sched_priority);
-
-// 	return;
-// }
-
-void *Thread1(){
+void *Low_priority_thread(){
 
 
-	printf("Thread1 with thread id %lu created\n", pthread_self() );
+	printf("Low_priority_thread with thread id %lu created\n", pthread_self() );
 
-	// show_sched();
+	printf("For kernelshark Low_priority_thread id %ld\n",syscall(SYS_gettid) );
 
-	printf("For kernelshark Thread1 id %ld\n",syscall(SYS_gettid) );
-
-	usleep(10000);
+	usleep(10000);		// so that it can switch to main and High_priority_thread can be created 
 
 	while(signal_Flag == 0){
 	}
 
-	printf("Signal recieved by Thread1 with id %lu\n",pthread_self() );
+	printf("Signal recieved by Low_priority_thread with id %lu\n",pthread_self() );
 
 	pthread_exit(NULL);
 }
-void *Thread2(){
+void *High_priority_thread(){
 
 	int count = 0;
 
-	printf("Thread2 with thread id %lu created\n", pthread_self() );
-	// show_sched();
-	printf("For kernelshark Thread2 id %ld \n",syscall(SYS_gettid) );
+	printf("High_priority_thread with thread id %lu created\n", pthread_self() );
+
+	printf("For kernelshark High_priority_thread id %ld \n",syscall(SYS_gettid) );
+
+	printf("Signal Sent \n");
 
 	pthread_kill(thread_id[0], SIGUSR1);
 
@@ -88,7 +57,7 @@ void *Thread2(){
 		}
 	}
 
-	printf("Over\n");
+	printf("High priority thread exits\n");
 
 	pthread_exit(NULL);
 }
@@ -141,21 +110,21 @@ int main(){
 		}
 	}	
 
-	//Thread1
-	thread_return = pthread_create( &thread_id[0], &tattr[0], &Thread1, NULL);
+	//Low_priority_thread
+	thread_return = pthread_create( &thread_id[0], &tattr[0], &Low_priority_thread, NULL);
 	if(thread_return != 0){
-		printf("Thread1 thread create error");
+		printf("Low_priority_thread thread create error");
 	}
 	// else
-	// printf("Thread1 thread created\n");
+	// printf("Low_priority_thread thread created\n");
 
-	//Thread2 
-	thread_return = pthread_create( &thread_id[1], &tattr[1], &Thread2, NULL);
+	//High_priority_thread 
+	thread_return = pthread_create( &thread_id[1], &tattr[1], &High_priority_thread, NULL);
 	if(thread_return != 0){
-		printf("Thread2 thread create error");
+		printf("High_priority_thread thread create error");
 	}
 	// else
-	// printf("Thread2 thread created\n");
+	// printf("High_priority_thread thread created\n");
 
 	
 	thread_return = pthread_join(thread_id[0], NULL);
